@@ -12,7 +12,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Quiz Competition',
-  description: 'Quiz Competition Platform - Test your knowledge in Computer Science and Information Technology',
+  description: 'Quiz Competition Platform - Test your knowledge in Technology',
 };
 
 export default function RootLayout({
