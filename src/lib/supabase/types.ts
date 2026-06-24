@@ -1,7 +1,3 @@
-// ============================================
-// Database Types
-// CSE & IT Quiz Competition Platform
-// ============================================
 
 export type RoomStatus = 'waiting' | 'active' | 'ended';
 export type ParticipantStatus = 'joined' | 'in_quiz' | 'submitted' | 'disqualified';

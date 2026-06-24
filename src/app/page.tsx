@@ -10,7 +10,7 @@ const features = [
   {
     icon: Brain,
     title: '20 MCQ Questions',
-    description: 'Curated questions from CSE & IT domains',
+    description: 'Curated questions',
     color: 'from-blue-500 to-cyan-500',
   },
   {
@@ -199,7 +199,7 @@ export default function HomePage() {
         <footer className="border-t border-white/5 py-8">
           <div className="mx-auto max-w-7xl px-6 text-center">
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} CSE & IT Department Quiz Competition. Built with ❤️
+              © {new Date().getFullYear()} Quiz Competition. Built with ❤️ By Daniel
             </p>
           </div>
         </footer>
