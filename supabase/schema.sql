@@ -200,3 +200,12 @@ SELECT
   marks,
   question_order
 FROM public.questions;
+
+
+
+ALTER TABLE public.questions
+ADD COLUMN category TEXT DEFAULT 'General',
+ADD COLUMN difficulty TEXT DEFAULT 'Medium',
+ADD COLUMN is_active BOOLEAN DEFAULT TRUE,
+ADD COLUMN created_by UUID REFERENCES public.admins(id),
+ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();

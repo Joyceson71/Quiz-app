@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 
-// GET - Get questions for a room (safe version without correct answers)
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
