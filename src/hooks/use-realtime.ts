@@ -6,7 +6,7 @@ import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/
 
 type PostgresChangeEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 
-interface UseRealtimeOptions<T> {
+interface UseRealtimeOptions<T extends Record<string, any>>{
   table: string;
   schema?: string;
   event?: PostgresChangeEvent;
