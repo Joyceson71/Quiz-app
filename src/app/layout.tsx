@@ -11,9 +11,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'CSE & IT Quiz Competition',
-  description: 'CSE and IT Department Quiz Competition Platform - Test your knowledge in Computer Science and Information Technology',
-  keywords: ['quiz', 'competition', 'CSE', 'IT', 'computer science', 'department'],
+  title: 'Quiz Competition',
+  description: 'Quiz Competition Platform - Test your knowledge in Computer Science and Information Technology',
 };
 
 export default function RootLayout({
