@@ -246,7 +246,7 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
                 Certificate of Achievement
               </div>
               <div style={{ fontSize: '42px', fontWeight: 'bold', marginTop: '20px', background: 'linear-gradient(to right, #60a5fa, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                CSE & IT Quiz Competition
+                Technical Quiz Competition
               </div>
               <div style={{ fontSize: '16px', color: '#94a3b8', marginTop: '8px' }}>
                 This certificate is proudly presented to

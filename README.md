@@ -1,6 +1,6 @@
-# 🎓 CSE & IT Department Quiz Competition Platform
+# 🎓 Technical Quiz Competition Platform
 
-A production-ready full-stack quiz competition platform supporting 300 concurrent students with real-time leaderboards, anti-cheat enforcement, and a comprehensive admin dashboard.
+A production-ready full-stack quiz competition platform supporting 300 concurrent participants with real-time leaderboards, anti-cheat enforcement, and a comprehensive admin dashboard.
 
 ## 🚀 Tech Stack
 

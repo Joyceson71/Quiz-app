@@ -126,7 +126,7 @@ export default function HomePage() {
               className="mx-auto max-w-4xl text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
             >
               <span className="bg-gradient-to-r from-white via-white to-white/70 bg-clip-text text-transparent dark:from-white dark:via-white dark:to-white/60">
-                CSE & IT Department
+                Technical
               </span>
               <br />
               <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent">
@@ -140,8 +140,8 @@ export default function HomePage() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl"
             >
-              Test your knowledge in Computer Science & Information Technology.
-              20 questions, 20 minutes — compete with up to 300 students in real-time!
+              Test your technical knowledge with curated MCQ challenges.
+              20 questions, 20 minutes — compete with up to 300 participants in real-time!
             </motion.p>
 
             <motion.div

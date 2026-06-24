@@ -1,10 +1,10 @@
 // ============================================
 // App Constants
-// CSE & IT Quiz Competition Platform
+// Technical Quiz Competition Platform
 // ============================================
 
-export const APP_NAME = 'CSE & IT Quiz Competition';
-export const APP_DESCRIPTION = 'CSE and IT Department Quiz Competition Platform';
+export const APP_NAME = 'Technical Quiz Competition';
+export const APP_DESCRIPTION = 'Technical Quiz Competition Platform';
 
 // Quiz settings
 export const QUIZ_DURATION_MINUTES = 20;
@@ -22,16 +22,15 @@ export const TIMER_WARNING_SECONDS = 5 * 60; // 5 minutes
 
 // Departments
 export const DEPARTMENTS = [
-  'CSE',
-  'IT',
-  'ECE',
-  'EEE',
-  'MECH',
-  'CIVIL',
-  'AIDS',
-  'AIML',
-  'CSD',
-  'CSM',
+  'Computer Science',
+  'Information Technology',
+  'Electronics',
+  'Electrical',
+  'Mechanical',
+  'Civil',
+  'Data Science',
+  'AI & ML',
+  'Other',
 ] as const;
 
 // Sections

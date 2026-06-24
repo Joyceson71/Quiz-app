@@ -162,7 +162,7 @@ export default function AdminRoomsPage() {
               <div className="space-y-2">
                 <Label>Room Name</Label>
                 <Input
-                  placeholder="e.g., CSE Quiz Round 1"
+                  placeholder="e.g., Technical Quiz Round 1"
                   value={newRoom.room_name}
                   onChange={(e) => setNewRoom(prev => ({ ...prev, room_name: e.target.value }))}
                   className="rounded-xl"

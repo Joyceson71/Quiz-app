@@ -1,6 +1,6 @@
 -- ============================================
 -- Row Level Security Policies
--- CSE & IT Quiz Competition Platform
+-- Technical Quiz Competition Platform
 -- ============================================
 
 -- ============================================

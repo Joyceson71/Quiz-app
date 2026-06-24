@@ -1,6 +1,6 @@
 -- ============================================
--- Seed Data: 20 CSE & IT Quiz Questions
--- CSE & IT Quiz Competition Platform
+-- Seed Data: 20 Technical Quiz Questions
+-- Technical Quiz Competition Platform
 -- ============================================
 
 INSERT INTO public.questions (question, option_a, option_b, option_c, option_d, correct_answer, marks, question_order) VALUES

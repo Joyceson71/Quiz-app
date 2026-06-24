@@ -1,5 +1,5 @@
 -- ============================================
--- CSE & IT Department Quiz Competition Platform
+-- Technical Quiz Competition Platform
 -- Complete Database Schema
 -- ============================================
 

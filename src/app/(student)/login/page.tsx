@@ -113,7 +113,7 @@ export default function StudentLoginPage() {
             <GraduationCap className="h-8 w-8 text-white" />
           </motion.div>
           <h1 className="text-2xl font-bold">Join Quiz Competition</h1>
-          <p className="mt-1 text-sm text-muted-foreground">CSE & IT Department</p>
+          <p className="mt-1 text-sm text-muted-foreground">Technical Quiz Platform</p>
         </div>
 
         {/* Form */}
@@ -141,7 +141,7 @@ export default function StudentLoginPage() {
             </Label>
             <Input
               id="register_no"
-              placeholder="e.g., 21CSE001"
+              placeholder="e.g., STU001"
               value={formData.register_no}
               onChange={(e) => setFormData(prev => ({ ...prev, register_no: e.target.value }))}
               className="h-11 rounded-xl border-white/10 bg-white/5"
