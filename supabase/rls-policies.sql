@@ -75,25 +75,13 @@ CREATE POLICY "rooms_select_anon" ON public.rooms
 -- ============================================
 ALTER TABLE public.participants ENABLE ROW LEVEL SECURITY;
 
--- Participants can view others in same room (for leaderboard)
+-- Authenticated users can view participants (application filters by room)
 DROP POLICY IF EXISTS "participants_select_same_room" ON public.participants;
-CREATE POLICY "participants_select_same_room" ON public.participants
-  FOR SELECT TO authenticated
-  USING (
-    room_id IN (
-      SELECT room_id FROM public.participants WHERE auth_user_id = auth.uid()
-    )
-    OR
-    EXISTS (SELECT 1 FROM public.admins WHERE auth_user_id = auth.uid())
-  );
-
--- Admins can view all participants
 DROP POLICY IF EXISTS "participants_select_admin" ON public.participants;
-CREATE POLICY "participants_select_admin" ON public.participants
+DROP POLICY IF EXISTS "participants_select_all_auth" ON public.participants;
+CREATE POLICY "participants_select_all_auth" ON public.participants
   FOR SELECT TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM public.admins WHERE auth_user_id = auth.uid())
-  );
+  USING (true);
 
 -- Participants can update their own record (for submission)
 DROP POLICY IF EXISTS "participants_update_own" ON public.participants;
