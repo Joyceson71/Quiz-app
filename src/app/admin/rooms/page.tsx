@@ -124,6 +124,26 @@ export default function AdminRoomsPage() {
     }
   };
 
+  const handleDeleteRoom = async (roomId: string) => {
+    if (!window.confirm('Are you sure you want to delete this room? This action cannot be undone.')) return;
+
+    try {
+      const res = await fetch(`/api/rooms/${roomId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        toast.success('Room deleted successfully!');
+        fetchRooms();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to delete room');
+      }
+    } catch {
+      toast.error('Failed to delete room');
+    }
+  };
+
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
@@ -300,6 +320,14 @@ export default function AdminRoomsPage() {
                           View →
                         </Button>
                       </Link>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteRoom(room.id)}
+                        className="gap-1 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="h-3 w-3" /> Delete
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
