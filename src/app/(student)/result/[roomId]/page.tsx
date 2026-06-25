@@ -77,13 +77,18 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
         background: '#0a0a0a',
       } as Parameters<typeof html2canvas>[1]);
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('landscape', 'mm', 'a4');
+      
+      // Handle Next.js / Turbopack CJS/ESM interop for jsPDF
+      // @ts-ignore
+      const JsPDF = typeof jsPDF === 'function' ? jsPDF : jsPDF.jsPDF || window.jspdf?.jsPDF;
+      const pdf = new JsPDF('landscape', 'mm', 'a4');
+      
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`certificate_${participant.student_name.replace(/\s+/g, '_')}.pdf`);
-    } catch {
-      console.error('Certificate generation failed');
+    } catch (e) {
+      console.error('Certificate generation failed:', e);
     } finally {
       setIsGeneratingCert(false);
     }
