@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
   Trophy, Award, Target, Clock, BarChart3, Download,
@@ -71,7 +72,7 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
 
     try {
       // Dynamically import jsPDF to avoid Next.js / Turbopack SSR issues
-      const { jsPDF } = await import('jspdf');
+      const { default: jsPDF } = await import('jspdf');
       const pdf = new jsPDF('landscape', 'mm', 'a4');
       
       const width = pdf.internal.pageSize.getWidth();
