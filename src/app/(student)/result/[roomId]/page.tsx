@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
   Trophy, Award, Target, Clock, BarChart3, Download,
@@ -13,8 +14,6 @@ import { createClient } from '@/lib/supabase/client';
 import type { Participant } from '@/lib/supabase/types';
 import { getRankEmoji, formatDate } from '@/lib/utils';
 import Link from 'next/link';
-import jsPDF from 'jspdf';
-import * as htmlToImage from 'html-to-image';
 
 export default function ResultPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
@@ -72,10 +71,9 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
     setIsGeneratingCert(true);
 
     try {
-      // Handle Next.js / Turbopack CJS/ESM interop for jsPDF
-      // @ts-ignore
-      const JsPDF = typeof jsPDF === 'function' ? jsPDF : jsPDF.jsPDF || window.jspdf?.jsPDF;
-      const pdf = new JsPDF('landscape', 'mm', 'a4');
+      // Dynamically import jsPDF to avoid Next.js / Turbopack SSR issues
+      const { default: jsPDF } = await import('jspdf');
+      const pdf = new jsPDF('landscape', 'mm', 'a4');
       
       const width = pdf.internal.pageSize.getWidth();
       const height = pdf.internal.pageSize.getHeight();
@@ -123,8 +121,10 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
       pdf.text(`${room?.room_name || 'Quiz'} • ${new Date().toLocaleDateString()}`, width / 2, 180, { align: 'center' });
       
       pdf.save(`certificate_${participant.student_name.replace(/\s+/g, '_')}.pdf`);
+      toast.success('Certificate downloaded!');
     } catch (e) {
       console.error('Certificate generation failed:', e);
+      toast.error(`Certificate Error: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setIsGeneratingCert(false);
     }
