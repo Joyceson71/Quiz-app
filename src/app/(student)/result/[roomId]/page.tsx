@@ -14,7 +14,7 @@ import type { Participant } from '@/lib/supabase/types';
 import { getRankEmoji, formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import * as htmlToImage from 'html-to-image';
 
 export default function ResultPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
@@ -72,20 +72,56 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
     setIsGeneratingCert(true);
 
     try {
-      const canvas = await html2canvas(certRef.current, {
-        useCORS: true,
-        background: '#0a0a0a',
-      } as Parameters<typeof html2canvas>[1]);
-      const imgData = canvas.toDataURL('image/png');
-      
       // Handle Next.js / Turbopack CJS/ESM interop for jsPDF
       // @ts-ignore
       const JsPDF = typeof jsPDF === 'function' ? jsPDF : jsPDF.jsPDF || window.jspdf?.jsPDF;
       const pdf = new JsPDF('landscape', 'mm', 'a4');
       
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      const width = pdf.internal.pageSize.getWidth();
+      const height = pdf.internal.pageSize.getHeight();
+      
+      // Background
+      pdf.setFillColor(15, 23, 42); // Slate 900
+      pdf.rect(0, 0, width, height, 'F');
+      
+      // Border
+      pdf.setDrawColor(56, 189, 248); // Sky 400
+      pdf.setLineWidth(2);
+      pdf.rect(10, 10, width - 20, height - 20);
+      
+      // Title
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(24);
+      pdf.text('CERTIFICATE OF ACHIEVEMENT', width / 2, 50, { align: 'center' });
+      
+      // Subtitle
+      pdf.setTextColor(148, 163, 184); // Slate 400
+      pdf.setFontSize(16);
+      pdf.text('Technical Quiz Competition', width / 2, 65, { align: 'center' });
+      
+      // Presented to
+      pdf.setFontSize(14);
+      pdf.text('This certificate is proudly presented to', width / 2, 90, { align: 'center' });
+      
+      // Student Name
+      pdf.setTextColor(250, 204, 21); // Yellow 400
+      pdf.setFontSize(36);
+      pdf.text(participant.student_name, width / 2, 115, { align: 'center' });
+      
+      // Details
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(12);
+      pdf.text(`${participant.register_no} • ${participant.department} • Section ${participant.section}`, width / 2, 130, { align: 'center' });
+      
+      // Score
+      pdf.setFontSize(16);
+      pdf.text(`For achieving Rank #${participant.rank} with a score of ${participant.score}/${participant.total_marks} (${participant.percentage}%)`, width / 2, 150, { align: 'center' });
+      
+      // Footer
+      pdf.setTextColor(100, 116, 139); // Slate 500
+      pdf.setFontSize(10);
+      pdf.text(`${room?.room_name || 'Quiz'} • ${new Date().toLocaleDateString()}`, width / 2, 180, { align: 'center' });
+      
       pdf.save(`certificate_${participant.student_name.replace(/\s+/g, '_')}.pdf`);
     } catch (e) {
       console.error('Certificate generation failed:', e);
