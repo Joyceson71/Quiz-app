@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClient, createClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   const isDev = process.env.NODE_ENV === 'development';
@@ -30,7 +30,11 @@ export async function POST(request: NextRequest) {
     const sanitizedName = student_name.trim();
     const sanitizedCode = room_code.trim().toUpperCase();
 
+    // Use service client for database operations to bypass RLS
     const supabase = createServiceClient();
+    
+    // Use regular client for auth sign in so we don't downgrade the service client's privileges
+    const authClient = await createClient();
 
     // Find the room by code
     const { data: room, error: roomError } = await supabase
@@ -96,7 +100,7 @@ export async function POST(request: NextRequest) {
       // RECONNECTION FLOW — sign in existing user and return session
       console.log(`[Reconnection] Attempting to reconnect participant: ${existingParticipant.id}`);
       
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await authClient.auth.signInWithPassword({
         email,
         password,
       });
@@ -116,7 +120,7 @@ export async function POST(request: NextRequest) {
              return getErrorResponse('Failed to update auth user password', updateError);
           }
           
-          const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+          const { data: retryData, error: retryError } = await authClient.auth.signInWithPassword({
             email,
             password,
           });
@@ -197,7 +201,7 @@ export async function POST(request: NextRequest) {
       if (authError.message?.includes('already been registered') || authError.message?.includes('already exists')) {
         console.log(`[Registration Recovery] Auth user already exists. Attempting sign-in.`);
         
-        const { data: existingAuthData, error: recoverySignInError } = await supabase.auth.signInWithPassword({
+        const { data: existingAuthData, error: recoverySignInError } = await authClient.auth.signInWithPassword({
           email,
           password,
         });
@@ -258,7 +262,7 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Sign in the newly created user to get a session
     console.log(`[Registration] Signing in newly created auth user: ${authData.user.id}`);
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error: signInError } = await authClient.auth.signInWithPassword({
       email,
       password,
     });
