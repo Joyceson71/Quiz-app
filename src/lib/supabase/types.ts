@@ -44,6 +44,8 @@ export interface Room {
   duration_minutes: number;
   max_participants: number;
   is_locked: boolean;
+  is_paused?: boolean;
+  pause_time?: string | null;
   announcement: string | null;
   created_at: string;
 }
@@ -65,6 +67,10 @@ export interface Participant {
   has_submitted: boolean;
   status: ParticipantStatus;
   question_order: number[] | null;
+  is_online?: boolean;
+  last_heartbeat?: string | null;
+  browser_info?: string | null;
+  ip_address?: string | null;
   created_at: string;
 }
 
@@ -78,6 +84,9 @@ export interface Question {
   correct_answer: string;
   marks: number;
   question_order: number;
+  category?: string | null;
+  subject?: string | null;
+  semester?: string | null;
   created_at: string;
 }
 
@@ -90,6 +99,9 @@ export interface QuestionSafe {
   option_d: string;
   marks: number;
   question_order: number;
+  category?: string | null;
+  subject?: string | null;
+  semester?: string | null;
 }
 
 export interface RoomQuestion {

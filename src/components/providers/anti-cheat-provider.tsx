@@ -178,7 +178,29 @@ export function AntiCheatProvider({
     };
 
     const handleWindowBlur = () => {
-      // Also triggers on window blur alongside visibilitychange
+      if (document.hidden) return; // Already handled by visibilitychange
+      
+      tabSwitchRef.current += 1; // Reuse the tab switch counter for focus loss
+      const count = tabSwitchRef.current;
+      logViolation('focus_loss', `Window lost focus #${count}`);
+
+      if (count >= MAX_TAB_SWITCHES) {
+        setState(prev => ({
+          ...prev,
+          tabSwitchCount: count,
+          shouldAutoSubmit: true,
+          autoSubmitReason: 'auto_submit_focus_loss',
+          showWarning: true,
+          warningMessage: `You have lost window focus ${MAX_TAB_SWITCHES} times. Your quiz will be auto-submitted.`,
+        }));
+      } else {
+        setState(prev => ({
+          ...prev,
+          tabSwitchCount: count,
+          showWarning: true,
+          warningMessage: `Warning: Window focus lost (${count}/${MAX_TAB_SWITCHES}). Please keep this window active! After ${MAX_TAB_SWITCHES} violations, your quiz will be auto-submitted.`,
+        }));
+      }
     };
 
     // --- Fullscreen Detection ---

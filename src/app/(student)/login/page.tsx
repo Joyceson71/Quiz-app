@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { GraduationCap, User, Hash, Building2, BookOpen, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,11 +10,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { DEPARTMENTS, SECTIONS } from '@/lib/constants';
+import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import Link from 'next/link';
 
-export default function StudentLoginPage() {
+function StudentLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     register_no: '',
@@ -23,6 +25,14 @@ export default function StudentLoginPage() {
     section: '',
     room_code: '',
   });
+
+  // Pre-fill room code from URL params (from QR code scan)
+  useEffect(() => {
+    const code = searchParams.get('code');
+    if (code) {
+      setFormData(prev => ({ ...prev, room_code: code.toUpperCase() }));
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,10 +59,23 @@ export default function StudentLoginPage() {
         return;
       }
 
-      // Store participant info in localStorage
+      // CRITICAL: Set the Supabase auth session on the client
+      // This is required for RLS policies to work on the client side
+      if (data.session?.access_token && data.session?.refresh_token) {
+        const supabase = createClient();
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
+
+      // Store participant info in localStorage for page restoration
       localStorage.setItem('participant', JSON.stringify(data.participant));
       localStorage.setItem('room', JSON.stringify(data.room));
-      localStorage.setItem('auth_user_id', data.auth_user_id || '');
+      // Store session tokens for reconnection after browser refresh
+      if (data.session) {
+        localStorage.setItem('quiz_session', JSON.stringify(data.session));
+      }
 
       if (data.isRejoining) {
         toast.success('Welcome back! Resuming your session.');
@@ -227,5 +250,13 @@ export default function StudentLoginPage() {
         </form>
       </motion.div>
     </div>
+  );
+}
+
+export default function StudentLoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>}>
+      <StudentLoginForm />
+    </Suspense>
   );
 }

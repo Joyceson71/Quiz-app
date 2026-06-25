@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, DoorOpen, Users, Play, Square, Lock,
@@ -20,7 +20,8 @@ import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 
 export default function AdminRoomsPage() {
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
   const [rooms, setRooms] = useState<(Room & { participant_count?: number })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -149,10 +150,8 @@ export default function AdminRoomsPage() {
           <p className="text-muted-foreground">Manage quiz competition rooms</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger>
-            <Button className="gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white">
-              <Plus className="h-4 w-4" /> Create Room
-            </Button>
+          <DialogTrigger render={<Button className="gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white" />}>
+            <Plus className="h-4 w-4" /> Create Room
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>

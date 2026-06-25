@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, use } from 'react';
+import { useEffect, useState, useCallback, useRef, use } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, ArrowLeft, Users, RefreshCw } from 'lucide-react';
+import { Trophy, ArrowLeft, Users, RefreshCw, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import type { LeaderboardEntry } from '@/lib/supabase/types';
@@ -11,10 +11,12 @@ import Link from 'next/link';
 
 export default function LeaderboardPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
 
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [roomName, setRoomName] = useState('');
+  const [roomStartTime, setRoomStartTime] = useState<string | null>(null);
   const [currentParticipantId, setCurrentParticipantId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -28,10 +30,13 @@ export default function LeaderboardPage({ params }: { params: Promise<{ roomId: 
 
     const { data: room } = await supabase
       .from('rooms')
-      .select('room_name')
+      .select('room_name, quiz_start_time')
       .eq('id', roomId)
       .single();
-    if (room) setRoomName(room.room_name);
+    if (room) {
+      setRoomName(room.room_name);
+      setRoomStartTime(room.quiz_start_time);
+    }
 
     setIsLoading(false);
   }, [supabase, roomId]);
@@ -144,9 +149,19 @@ export default function LeaderboardPage({ params }: { params: Promise<{ roomId: 
                     </div>
 
                     {/* Score */}
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-blue-400">{entry.score}/20</p>
-                      <p className="text-xs text-muted-foreground">{entry.percentage}%</p>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-blue-400">{entry.score}/20</p>
+                          <p className="text-xs font-medium text-emerald-400">{entry.percentage}% Accuracy</p>
+                        </div>
+                      </div>
+                      {roomStartTime && entry.submission_time && (
+                        <p className="text-[10px] text-muted-foreground mt-1 bg-white/5 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {Math.max(1, Math.round((new Date(entry.submission_time).getTime() - new Date(roomStartTime).getTime()) / 60000))} mins
+                        </p>
+                      )}
                     </div>
                   </motion.div>
                 );

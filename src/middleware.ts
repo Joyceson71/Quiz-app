@@ -1,7 +1,19 @@
 import { updateSession } from '@/lib/supabase/middleware';
-import { type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
+import { globalRateLimiter } from '@/lib/rate-limit';
 
 export async function middleware(request: NextRequest) {
+  // Apply rate limiting to API routes
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    if (!globalRateLimiter.check(ip)) {
+      return NextResponse.json(
+        { error: 'Too many requests, please try again later.' },
+        { status: 429, headers: { 'Retry-After': '60' } }
+      );
+    }
+  }
+
   return await updateSession(request);
 }
 
