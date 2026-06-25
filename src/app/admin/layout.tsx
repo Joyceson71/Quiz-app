@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, DoorOpen, Trophy, LogOut, GraduationCap,
-  Menu, X, ChevronRight, FileQuestion,
+  Menu, X, ChevronRight, FileQuestion, Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 const navItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/rooms', label: 'Rooms', icon: DoorOpen },
+  { href: '/admin/monitoring', label: 'Monitoring', icon: Activity },
   { href: '/admin/questions', label: 'Questions', icon: FileQuestion },
 ];
 

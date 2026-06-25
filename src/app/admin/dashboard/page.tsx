@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, UserCheck, FileCheck, BarChart3,
@@ -30,7 +30,8 @@ const itemVariants = {
 };
 
 export default function AdminDashboard() {
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
   const [stats, setStats] = useState<DashboardStats>({
     totalRooms: 0,
     activeRooms: 0,
@@ -40,7 +41,7 @@ export default function AdminDashboard() {
   const [recentRooms, setRecentRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchStats = useCallback(async () => {
     // Get rooms
     const { data: rooms } = await supabase
       .from('rooms')
@@ -83,8 +84,24 @@ export default function AdminDashboard() {
   }, [supabase]);
 
   useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
+    fetchStats();
+
+    const roomsChannel = supabase.channel('dashboard-rooms')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, fetchStats)
+      .subscribe();
+
+    const participantsChannel = supabase.channel('dashboard-participants')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, fetchStats)
+      .subscribe();
+
+    const interval = setInterval(fetchStats, 30000);
+
+    return () => {
+      supabase.removeChannel(roomsChannel);
+      supabase.removeChannel(participantsChannel);
+      clearInterval(interval);
+    };
+  }, [fetchStats, supabase]);
 
   const statCards = [
     {

@@ -8,6 +8,7 @@ import {
   GraduationCap, CheckCircle2, XCircle, ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase/client';
 import type { Participant } from '@/lib/supabase/types';
 import { getRankEmoji, formatDate } from '@/lib/utils';
@@ -18,12 +19,15 @@ import html2canvas from 'html2canvas';
 export default function ResultPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
   const router = useRouter();
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
   const certRef = useRef<HTMLDivElement>(null);
 
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [room, setRoom] = useState<{ room_name: string; room_code: string } | null>(null);
   const [isGeneratingCert, setIsGeneratingCert] = useState(false);
+  const [reviewData, setReviewData] = useState<any[]>([]);
+  const [showReview, setShowReview] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('participant');
@@ -53,6 +57,13 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
       .single()
       .then(({ data }) => {
         if (data) setRoom(data);
+      });
+
+    // Fetch review data
+    fetch(`/api/quiz/review?room_id=${roomId}&participant_id=${p.id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.review) setReviewData(data.review);
       });
   }, [supabase, roomId, router]);
 
@@ -208,11 +219,77 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
                 className="rounded-xl border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
               >
                 <Download className="mr-2 h-4 w-4" />
-                {isGeneratingCert ? 'Generating...' : 'Download Certificate'}
+                {isGeneratingCert ? 'Generating...' : 'Certificate'}
+              </Button>
+            )}
+            {reviewData.length > 0 && (
+              <Button
+                onClick={() => setShowReview(!showReview)}
+                variant="outline"
+                className="rounded-xl border-white/10 flex-1"
+              >
+                {showReview ? 'Hide Review' : 'Detailed Review'}
               </Button>
             )}
           </div>
         </motion.div>
+
+        {/* Detailed Review Section */}
+        {showReview && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-8 space-y-4"
+          >
+            <h2 className="text-xl font-bold mb-4">Detailed Review</h2>
+            {reviewData.map((q: any, i: number) => (
+              <div key={q.id} className="glass rounded-xl p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <span className="text-sm font-medium text-muted-foreground">Question {i + 1}</span>
+                  {q.is_correct ? (
+                    <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                      <CheckCircle2 className="mr-1 h-3 w-3" /> Correct
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-red-500/10 text-red-400 border-red-500/20">
+                      <XCircle className="mr-1 h-3 w-3" /> Incorrect
+                    </Badge>
+                  )}
+                </div>
+                <p className="font-medium mb-4">{q.question}</p>
+                <div className="space-y-2">
+                  {['A', 'B', 'C', 'D'].map((opt) => {
+                    const isSelected = q.selected_answer === opt;
+                    const isCorrect = q.correct_answer === opt;
+                    let bgClass = 'bg-white/5 border-white/5';
+                    let textClass = 'text-muted-foreground';
+                    
+                    if (isCorrect) {
+                      bgClass = 'bg-emerald-500/20 border-emerald-500/30';
+                      textClass = 'text-emerald-400 font-medium';
+                    } else if (isSelected && !isCorrect) {
+                      bgClass = 'bg-red-500/20 border-red-500/30';
+                      textClass = 'text-red-400';
+                    }
+
+                    return (
+                      <div key={opt} className={`p-3 rounded-lg border ${bgClass} flex items-center gap-3`}>
+                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs font-bold ${isCorrect ? 'bg-emerald-500 text-white' : isSelected ? 'bg-red-500 text-white' : 'bg-white/10'}`}>
+                          {opt}
+                        </div>
+                        <span className={`text-sm ${textClass}`}>
+                          {q[`option_${opt.toLowerCase()}`]}
+                        </span>
+                        {isSelected && !isCorrect && <XCircle className="ml-auto h-4 w-4 text-red-400" />}
+                        {isCorrect && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-400" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        )}
       </div>
 
       {/* Hidden Certificate Template */}

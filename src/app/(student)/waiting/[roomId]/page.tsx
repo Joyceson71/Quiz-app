@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect, useState, useCallback, use } from 'react';
+import { useEffect, useState, useCallback, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Clock, Wifi, WifiOff, MessageSquare, GraduationCap } from 'lucide-react';
+import { Users, Clock, Wifi, WifiOff, MessageSquare, GraduationCap, UserCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { Room, Participant } from '@/lib/supabase/types';
+import { usePresence } from '@/hooks/use-presence';
 
 export default function WaitingRoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
   const router = useRouter();
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
 
   const [room, setRoom] = useState<Room | null>(null);
   const [participantCount, setParticipantCount] = useState(0);
@@ -18,15 +20,38 @@ export default function WaitingRoomPage({ params }: { params: Promise<{ roomId: 
   const [isConnected, setIsConnected] = useState(true);
   const [dots, setDots] = useState('');
 
-  // Load participant from localStorage
+  const { onlineUsers } = usePresence(roomId, participant?.id || null);
+
+  // Restore session and load participant
   useEffect(() => {
-    const stored = localStorage.getItem('participant');
-    if (stored) {
-      setParticipant(JSON.parse(stored));
-    } else {
-      router.push('/login');
-    }
-  }, [router]);
+    const restoreSession = async () => {
+      // Restore auth session from localStorage
+      const storedSession = localStorage.getItem('quiz_session');
+      if (storedSession) {
+        try {
+          const session = JSON.parse(storedSession);
+          if (session.access_token && session.refresh_token) {
+            await supabase.auth.setSession({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+            });
+          }
+        } catch (e) {
+          console.error('Session restore failed:', e);
+        }
+      }
+
+      // Load participant from localStorage
+      const stored = localStorage.getItem('participant');
+      if (stored) {
+        setParticipant(JSON.parse(stored));
+      } else {
+        router.push('/login');
+      }
+    };
+
+    restoreSession();
+  }, [supabase, router]);
 
   // Fetch initial room data
   const fetchRoom = useCallback(async () => {
@@ -166,8 +191,13 @@ export default function WaitingRoomPage({ params }: { params: Promise<{ roomId: 
             </div>
           </motion.div>
 
-          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Users className="h-4 w-4" /> Participants Joined
+          <div className="mt-4 flex items-center justify-center gap-6 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Users className="h-4 w-4" /> {participantCount} Joined
+            </div>
+            <div className="flex items-center gap-2 text-emerald-400">
+              <UserCheck className="h-4 w-4" /> {onlineUsers.length} Online
+            </div>
           </div>
 
           {/* Waiting Message */}

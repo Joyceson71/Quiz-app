@@ -33,13 +33,14 @@ export async function POST(
     const endTime = new Date(Date.now() + room.duration_minutes * 60 * 1000).toISOString();
 
     // Update room status
+    // Note: We do NOT set is_locked here. That is only for admin manual lock.
+    // Students should be able to join active rooms.
     const { data: updatedRoom, error: updateError } = await supabase
       .from('rooms')
       .update({
         status: 'active',
         quiz_start_time: now,
         quiz_end_time: endTime,
-        is_locked: true,
       })
       .eq('id', roomId)
       .select()

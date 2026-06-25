@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, useCallback, use, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -20,6 +20,9 @@ import {
   Clock,
   Target,
   TrendingUp,
+  Pause,
+  TimerReset,
+  UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,7 +82,8 @@ export default function AdminRoomDetailPage({
   params: Promise<{ roomId: string }>;
 }) {
   const { roomId } = use(params);
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
 
   const [room, setRoom] = useState<Room | null>(null);
   const [stats, setStats] = useState<RoomStats | null>(null);
@@ -206,6 +210,56 @@ export default function AdminRoomDetailPage({
     }
   };
 
+  const handlePauseResume = async (action: 'pause' | 'resume') => {
+    const res = await fetch(`/api/rooms/${roomId}/${action}`, { method: "POST" });
+    if (res.ok) {
+      toast.success(`Quiz ${action}d!`);
+      fetchData();
+    } else {
+      const data = await res.json();
+      toast.error(data.error || `Failed to ${action} quiz`);
+    }
+  };
+
+  const handleTimerChange = async (minutes: number) => {
+    const res = await fetch(`/api/rooms/${roomId}/timer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ minutes })
+    });
+    if (res.ok) {
+      toast.success(`Timer updated successfully`);
+      fetchData();
+    } else {
+      const data = await res.json();
+      toast.error(data.error || `Failed to update timer`);
+    }
+  };
+
+  const removeParticipant = async (participantId: string) => {
+    if (!confirm("Are you sure you want to completely remove this participant?")) return;
+    
+    const res = await fetch(`/api/rooms/${roomId}/participants/${participantId}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Participant removed");
+      fetchData();
+    } else {
+      toast.error("Failed to remove participant");
+    }
+  };
+
+  const disableParticipant = async (participantId: string) => {
+    if (!confirm("Are you sure you want to disable this participant and force submit their quiz?")) return;
+    
+    const res = await fetch(`/api/rooms/${roomId}/participants/${participantId}`, { method: "PATCH" });
+    if (res.ok) {
+      toast.success("Participant disabled");
+      fetchData();
+    } else {
+      toast.error("Failed to disable participant");
+    }
+  };
+
   const updateAnnouncement = async () => {
     await supabase.from("rooms").update({ announcement }).eq("id", roomId);
     toast.success("Announcement updated!");
@@ -308,13 +362,38 @@ export default function AdminRoomDetailPage({
               <Play className="h-4 w-4" /> Start Quiz
             </Button>
           )}
-          {room.status === "active" && (
+          {room.status === "active" && !room.is_paused && (
             <Button
-              onClick={() => handleAction("end")}
-              className="gap-2 bg-red-600 text-white hover:bg-red-700 rounded-xl"
+              onClick={() => handlePauseResume('pause')}
+              className="gap-2 bg-amber-600 text-white hover:bg-amber-700 rounded-xl"
             >
-              <Square className="h-4 w-4" /> End Quiz
+              <Pause className="h-4 w-4" /> Pause
             </Button>
+          )}
+          {room.status === "active" && room.is_paused && (
+            <Button
+              onClick={() => handlePauseResume('resume')}
+              className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl"
+            >
+              <Play className="h-4 w-4" /> Resume
+            </Button>
+          )}
+          {room.status === "active" && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => handleTimerChange(5)}
+                className="gap-2 rounded-xl text-blue-400 border-blue-500/30 hover:bg-blue-500/10"
+              >
+                <TimerReset className="h-4 w-4" /> +5m
+              </Button>
+              <Button
+                onClick={() => handleAction("end")}
+                className="gap-2 bg-red-600 text-white hover:bg-red-700 rounded-xl"
+              >
+                <Square className="h-4 w-4" /> End Quiz
+              </Button>
+            </>
           )}
           <Button
             variant="outline"
@@ -443,6 +522,9 @@ export default function AdminRoomDetailPage({
                       <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                         Rank
                       </th>
+                      <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -479,6 +561,27 @@ export default function AdminRoomDetailPage({
                         </td>
                         <td className="px-4 py-3">
                           {p.rank ? getRankEmoji(p.rank) : "-"}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => disableParticipant(p.id)}
+                              className="h-7 px-2 text-xs text-amber-400 hover:text-amber-500"
+                              disabled={p.has_submitted}
+                            >
+                              Disable
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeParticipant(p.id)}
+                              className="h-7 px-2 text-xs text-red-400 hover:text-red-500"
+                            >
+                              <UserX className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
