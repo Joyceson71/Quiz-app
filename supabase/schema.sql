@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS public.rooms (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_rooms_room_code ON public.rooms(room_code);
-CREATE INDEX idx_rooms_status ON public.rooms(status);
+CREATE INDEX IF NOT EXISTS idx_rooms_room_code ON public.rooms(room_code);
+CREATE INDEX IF NOT EXISTS idx_rooms_status ON public.rooms(status);
 
 -- ============================================
 -- 3. QUESTIONS TABLE
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS public.questions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_questions_order ON public.questions(question_order);
+CREATE INDEX IF NOT EXISTS idx_questions_order ON public.questions(question_order);
 
 -- ============================================
 -- 4. PARTICIPANTS TABLE
@@ -82,11 +82,11 @@ CREATE TABLE IF NOT EXISTS public.participants (
   UNIQUE(room_id, register_no)
 );
 
-CREATE INDEX idx_participants_room_id ON public.participants(room_id);
-CREATE INDEX idx_participants_auth_user ON public.participants(auth_user_id);
-CREATE INDEX idx_participants_status ON public.participants(status);
-CREATE INDEX idx_participants_score ON public.participants(score DESC);
-CREATE INDEX idx_participants_room_score ON public.participants(room_id, score DESC, submission_time ASC);
+CREATE INDEX IF NOT EXISTS idx_participants_room_id ON public.participants(room_id);
+CREATE INDEX IF NOT EXISTS idx_participants_auth_user ON public.participants(auth_user_id);
+CREATE INDEX IF NOT EXISTS idx_participants_status ON public.participants(status);
+CREATE INDEX IF NOT EXISTS idx_participants_score ON public.participants(score DESC);
+CREATE INDEX IF NOT EXISTS idx_participants_room_score ON public.participants(room_id, score DESC, submission_time ASC);
 
 -- ============================================
 -- 5. ROOM_QUESTIONS TABLE (Junction for randomization)
@@ -101,8 +101,8 @@ CREATE TABLE IF NOT EXISTS public.room_questions (
   UNIQUE(room_id, question_id)
 );
 
-CREATE INDEX idx_room_questions_room ON public.room_questions(room_id);
-CREATE INDEX idx_room_questions_order ON public.room_questions(room_id, display_order);
+CREATE INDEX IF NOT EXISTS idx_room_questions_room ON public.room_questions(room_id);
+CREATE INDEX IF NOT EXISTS idx_room_questions_order ON public.room_questions(room_id, display_order);
 
 -- ============================================
 -- 6. ANSWERS TABLE
@@ -120,9 +120,9 @@ CREATE TABLE IF NOT EXISTS public.answers (
   UNIQUE(participant_id, question_id)
 );
 
-CREATE INDEX idx_answers_participant ON public.answers(participant_id);
-CREATE INDEX idx_answers_question ON public.answers(question_id);
-CREATE INDEX idx_answers_room ON public.answers(room_id);
+CREATE INDEX IF NOT EXISTS idx_answers_participant ON public.answers(participant_id);
+CREATE INDEX IF NOT EXISTS idx_answers_question ON public.answers(question_id);
+CREATE INDEX IF NOT EXISTS idx_answers_room ON public.answers(room_id);
 
 -- ============================================
 -- 7. VIOLATIONS TABLE
@@ -146,9 +146,9 @@ CREATE TABLE IF NOT EXISTS public.violations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_violations_participant ON public.violations(participant_id);
-CREATE INDEX idx_violations_room ON public.violations(room_id);
-CREATE INDEX idx_violations_type ON public.violations(violation_type);
+CREATE INDEX IF NOT EXISTS idx_violations_participant ON public.violations(participant_id);
+CREATE INDEX IF NOT EXISTS idx_violations_room ON public.violations(room_id);
+CREATE INDEX IF NOT EXISTS idx_violations_type ON public.violations(violation_type);
 
 -- ============================================
 -- 8. ACTIVITY_LOGS TABLE
@@ -174,17 +174,34 @@ CREATE TABLE IF NOT EXISTS public.activity_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_activity_logs_participant ON public.activity_logs(participant_id);
-CREATE INDEX idx_activity_logs_room ON public.activity_logs(room_id);
-CREATE INDEX idx_activity_logs_type ON public.activity_logs(event_type);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_participant ON public.activity_logs(participant_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_room ON public.activity_logs(room_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_type ON public.activity_logs(event_type);
 
 -- ============================================
 -- Enable Realtime for key tables
 -- ============================================
-ALTER PUBLICATION supabase_realtime ADD TABLE public.rooms;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.participants;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.answers;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.violations;
+-- ============================================
+-- Enable Realtime for key tables
+-- ============================================
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'rooms') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.rooms;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'participants') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.participants;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'answers') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.answers;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'violations') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.violations;
+  END IF;
+END $$;
 
 -- ============================================
 -- Create a view that hides correct answers from students
@@ -201,11 +218,9 @@ SELECT
   question_order
 FROM public.questions;
 
-
-
 ALTER TABLE public.questions
-ADD COLUMN category TEXT DEFAULT 'General',
-ADD COLUMN difficulty TEXT DEFAULT 'Medium',
-ADD COLUMN is_active BOOLEAN DEFAULT TRUE,
-ADD COLUMN created_by UUID REFERENCES public.admins(id),
-ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();
+ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General',
+ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'Medium',
+ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE,
+ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES public.admins(id),
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
