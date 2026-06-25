@@ -1,4 +1,4 @@
-import { updateSession } from '@/lib/supabase/middleware';
+import { updateSession } from '@/lib/supabase/proxy';
 import { NextResponse, type NextRequest } from 'next/server';
 import { globalRateLimiter } from '@/lib/rate-limit';
 
