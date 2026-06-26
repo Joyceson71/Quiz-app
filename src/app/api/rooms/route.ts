@@ -26,7 +26,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { room_name, duration_minutes = 20, max_participants = 300 } = body;
+    const { room_name, duration_minutes = 20, max_participants = 300, question_ids = [] } = body;
 
     if (!room_name) {
       return NextResponse.json(
@@ -59,8 +59,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Assign randomized questions to this room
-    await supabase.rpc('assign_questions_to_room', { target_room_id: room.id });
+    // Assign specific questions if provided, otherwise assign randomized questions
+    if (question_ids && question_ids.length > 0) {
+      const roomQuestions = question_ids.map((qId: string, index: number) => ({
+        room_id: room.id,
+        question_id: qId,
+        display_order: index + 1
+      }));
+      
+      const { error: rqError } = await supabase
+        .from('room_questions')
+        .insert(roomQuestions);
+        
+      if (rqError) {
+        console.error('Error assigning specific questions:', rqError);
+        // Continue anyway since the room is created
+      }
+    } else {
+      await supabase.rpc('assign_questions_to_room', { target_room_id: room.id });
+    }
 
     return NextResponse.json({ room }, { status: 201 });
   } catch (error) {

@@ -13,6 +13,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { createClient } from '@/lib/supabase/client';
 import type { Room } from '@/lib/supabase/types';
 import { toast } from 'sonner';
@@ -28,11 +30,19 @@ export default function AdminRoomsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [qrDialogRoom, setQrDialogRoom] = useState<Room | null>(null);
   const [copiedCode, setCopiedCode] = useState('');
-  const [newRoom, setNewRoom] = useState({
+  const [newRoom, setNewRoom] = useState<{
+    room_name: string;
+    duration_minutes: number;
+    max_participants: number;
+    question_ids: string[];
+  }>({
     room_name: '',
     duration_minutes: 20,
     max_participants: 300,
+    question_ids: [],
   });
+  const [allQuestions, setAllQuestions] = useState<any[]>([]);
+  const [questionSearch, setQuestionSearch] = useState('');
 
   const fetchRooms = useCallback(async () => {
     const { data } = await supabase
@@ -58,7 +68,17 @@ export default function AdminRoomsPage() {
 
   useEffect(() => {
     fetchRooms();
-  }, [fetchRooms]);
+    
+    // Fetch all questions for assignment
+    const fetchQuestions = async () => {
+      const { data } = await supabase
+        .from('questions')
+        .select('id, question, category, subject, marks')
+        .order('created_at', { ascending: false });
+      if (data) setAllQuestions(data);
+    };
+    fetchQuestions();
+  }, [fetchRooms, supabase]);
 
   const createRoom = async () => {
     if (!newRoom.room_name) {
@@ -78,7 +98,7 @@ export default function AdminRoomsPage() {
       if (res.ok) {
         toast.success(`Room created! Code: ${data.room.room_code}`);
         setDialogOpen(false);
-        setNewRoom({ room_name: '', duration_minutes: 20, max_participants: 300 });
+        setNewRoom({ room_name: '', duration_minutes: 20, max_participants: 300, question_ids: [] });
         fetchRooms();
       } else {
         toast.error(data.error);
@@ -161,6 +181,37 @@ export default function AdminRoomsPage() {
   };
 
   const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  
+  const filteredQuestions = allQuestions.filter(q => 
+    q.question.toLowerCase().includes(questionSearch.toLowerCase()) || 
+    (q.subject && q.subject.toLowerCase().includes(questionSearch.toLowerCase()))
+  );
+  
+  const toggleQuestion = (id: string) => {
+    setNewRoom(prev => ({
+      ...prev,
+      question_ids: prev.question_ids.includes(id) 
+        ? prev.question_ids.filter(qId => qId !== id)
+        : [...prev.question_ids, id]
+    }));
+  };
+  
+  const toggleAllFiltered = () => {
+    const allFilteredIds = filteredQuestions.map(q => q.id);
+    const allSelected = allFilteredIds.every(id => newRoom.question_ids.includes(id));
+    
+    if (allSelected) {
+      setNewRoom(prev => ({
+        ...prev,
+        question_ids: prev.question_ids.filter(id => !allFilteredIds.includes(id))
+      }));
+    } else {
+      setNewRoom(prev => ({
+        ...prev,
+        question_ids: Array.from(new Set([...prev.question_ids, ...allFilteredIds]))
+      }));
+    }
+  };
 
   return (
     <div>
@@ -206,6 +257,53 @@ export default function AdminRoomsPage() {
                     className="rounded-xl"
                   />
                 </div>
+              </div>
+              
+              <div className="space-y-2 pt-2 border-t border-white/10">
+                <div className="flex items-center justify-between">
+                  <Label>Assign Questions ({newRoom.question_ids.length} selected)</Label>
+                  <Button variant="ghost" size="sm" onClick={toggleAllFiltered} className="h-6 text-xs text-violet-400">
+                    Select All Visible
+                  </Button>
+                </div>
+                <Input
+                  placeholder="Search by question or subject..."
+                  value={questionSearch}
+                  onChange={(e) => setQuestionSearch(e.target.value)}
+                  className="rounded-xl h-8 text-sm"
+                />
+                <ScrollArea className="h-[200px] w-full rounded-md border border-white/10 bg-white/5 p-4">
+                  {filteredQuestions.length === 0 ? (
+                    <div className="text-center text-sm text-muted-foreground py-8">No questions found.</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredQuestions.map((q) => (
+                        <div key={q.id} className="flex items-start space-x-2">
+                          <Checkbox 
+                            id={`q-${q.id}`} 
+                            checked={newRoom.question_ids.includes(q.id)}
+                            onCheckedChange={() => toggleQuestion(q.id)}
+                            className="mt-1"
+                          />
+                          <label
+                            htmlFor={`q-${q.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                          >
+                            <span className="line-clamp-2">{q.question}</span>
+                            {q.subject && (
+                              <span className="text-[10px] text-violet-400 mt-1 block font-mono bg-violet-500/10 w-fit px-1.5 py-0.5 rounded">
+                                {q.subject}
+                              </span>
+                            )}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+                <p className="text-xs text-muted-foreground">
+                  Leave empty to assign all available questions randomly.
+                </p>
               </div>
             </div>
             <DialogFooter>
