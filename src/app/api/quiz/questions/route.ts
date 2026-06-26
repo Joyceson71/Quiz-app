@@ -37,11 +37,48 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: qError.message }, { status: 500 });
     }
 
-    // Sort questions by room's display order
-    const orderMap = new Map(roomQuestions.map(rq => [rq.question_id, rq.display_order]));
-    const sortedQuestions = questions?.sort(
-      (a, b) => (orderMap.get(a.id) || 0) - (orderMap.get(b.id) || 0)
-    );
+    let finalOrder: string[] = [];
+    
+    if (participantId) {
+      // Check if participant already has a saved question order
+      const { data: participantData } = await supabase
+        .from('participants')
+        .select('question_order')
+        .eq('id', participantId)
+        .single();
+        
+      if (participantData?.question_order && Array.isArray(participantData.question_order) && participantData.question_order.length > 0) {
+        finalOrder = participantData.question_order;
+      } else {
+        // Generate a new shuffled order
+        const shuffledIds = [...questionIds].sort(() => Math.random() - 0.5);
+        finalOrder = shuffledIds;
+        
+        // Save to DB
+        await supabase
+          .from('participants')
+          .update({ question_order: shuffledIds })
+          .eq('id', participantId);
+      }
+    } else {
+      // Fallback to room's display order if no participant (e.g. preview)
+      finalOrder = [...questionIds].sort((a, b) => {
+        const orderA = roomQuestions.find(rq => rq.question_id === a)?.display_order || 0;
+        const orderB = roomQuestions.find(rq => rq.question_id === b)?.display_order || 0;
+        return orderA - orderB;
+      });
+    }
+
+    // Sort questions by the final order
+    const sortedQuestions = questions?.sort((a, b) => {
+      const indexA = finalOrder.indexOf(a.id);
+      const indexB = finalOrder.indexOf(b.id);
+      
+      // Handle edge cases where a question might not be in the order array
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
 
     // Get existing answers for this participant (for resume)
     let existingAnswers: Record<string, string> = {};

@@ -26,7 +26,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { room_name, duration_minutes = 20, max_participants = 300, question_ids = [] } = body;
+    const { room_name, duration_minutes = 20, max_participants = 300, question_ids = [], allowed_register_nos = null } = body;
 
     if (!room_name) {
       return NextResponse.json(
@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
         duration_minutes,
         max_participants,
         status: 'waiting',
+        allowed_register_nos,
       })
       .select()
       .single();

@@ -29,6 +29,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Review is only available after submission' }, { status: 403 });
     }
 
+    // Verify room has ended (prevent answer sharing while quiz is active)
+    const { data: room, error: roomError } = await supabase
+      .from('rooms')
+      .select('status')
+      .eq('id', roomId)
+      .single();
+
+    if (roomError || !room) {
+      return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+    }
+
+    if (room.status !== 'ended') {
+      return NextResponse.json({ error: 'Review is only available after the quiz has completely ended for all participants.' }, { status: 403 });
+    }
+
     // Get answers
     const { data: answers, error: aError } = await supabase
       .from('answers')

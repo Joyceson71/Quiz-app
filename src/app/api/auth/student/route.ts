@@ -58,6 +58,16 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
+    
+    // Check whitelisting (allowed_register_nos)
+    if (room.allowed_register_nos && Array.isArray(room.allowed_register_nos) && room.allowed_register_nos.length > 0) {
+      if (!room.allowed_register_nos.includes(sanitizedRegNo)) {
+        return NextResponse.json(
+          { error: 'Your registration number is not authorized to join this room.' },
+          { status: 403 }
+        );
+      }
+    }
 
     // Check participant limit
     const { count, error: countError } = await supabase
