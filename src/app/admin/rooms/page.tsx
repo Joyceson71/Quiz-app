@@ -35,13 +35,11 @@ export default function AdminRoomsPage() {
     duration_minutes: number;
     max_participants: number;
     question_ids: string[];
-    allowed_register_nos: string;
   }>({
     room_name: '',
     duration_minutes: 20,
     max_participants: 300,
     question_ids: [],
-    allowed_register_nos: '',
   });
   const [allQuestions, setAllQuestions] = useState<any[]>([]);
   const [questionSearch, setQuestionSearch] = useState('');
@@ -90,29 +88,18 @@ export default function AdminRoomsPage() {
 
     setIsCreating(true);
     
-    // Parse allowed_register_nos
-    const parsedAllowed = newRoom.allowed_register_nos
-      .split(',')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-      
-    const payload = {
-      ...newRoom,
-      allowed_register_nos: parsedAllowed.length > 0 ? parsedAllowed : null
-    };
-
     try {
       const res = await fetch('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(newRoom),
       });
       const data = await res.json();
 
       if (res.ok) {
         toast.success(`Room created! Code: ${data.room.room_code}`);
         setDialogOpen(false);
-        setNewRoom({ room_name: '', duration_minutes: 20, max_participants: 300, question_ids: [], allowed_register_nos: '' });
+        setNewRoom({ room_name: '', duration_minutes: 20, max_participants: 300, question_ids: [] });
         fetchRooms();
       } else {
         toast.error(data.error);
@@ -318,19 +305,6 @@ export default function AdminRoomsPage() {
                 <p className="text-xs text-muted-foreground">
                   Leave empty to assign all available questions randomly.
                 </p>
-              </div>
-              
-              <div className="space-y-2 pt-2 border-t border-white/10">
-                <Label>Allowed Registration Numbers (Optional)</Label>
-                <div className="text-xs text-muted-foreground mb-2">
-                  To restrict access, paste a comma-separated list of allowed registration numbers (e.g., 20BCA101, 20BCA102). Leave empty to allow anyone.
-                </div>
-                <Input
-                  placeholder="e.g. 20BCA101, 20BCA102"
-                  value={newRoom.allowed_register_nos}
-                  onChange={(e) => setNewRoom(prev => ({ ...prev, allowed_register_nos: e.target.value }))}
-                  className="rounded-xl"
-                />
               </div>
             </div>
             <DialogFooter>

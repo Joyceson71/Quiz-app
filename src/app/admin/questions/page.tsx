@@ -398,6 +398,8 @@ export default function QuestionsPage() {
                     option_d: q.option_d,
                     correct_answer: q.correct_answer || 'A',
                     marks: parseInt(q.marks) || 1,
+                    subject: q.subject || 'General',
+                    category: q.category || 'General',
                   }));
 
                   const { error } = await supabase.from('questions').insert(validQuestions);
