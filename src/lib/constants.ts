@@ -26,15 +26,21 @@ export const DEPARTMENTS = [
   'Information Technology',
   'Electronics',
   'Electrical',
-  'Mechanical',
+  'Mech',
   'Civil',
   'Data Science',
-  'AI & ML',
+  'AIML',
+  'BME',
+  'RAA',
+  'AIDS',
   'Other',
 ] as const;
 
 // Sections
 export const SECTIONS = ['A', 'B', 'C', 'D', 'E'] as const;
+
+// College Years
+export const COLLEGE_YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4'] as const;
 
 // Color palette
 export const COLORS = {

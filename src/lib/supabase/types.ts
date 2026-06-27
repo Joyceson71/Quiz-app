@@ -58,6 +58,7 @@ export interface Participant {
   student_name: string;
   department: string;
   section: string;
+  college_year: string;
   participant_code: string;
   score: number;
   total_marks: number;

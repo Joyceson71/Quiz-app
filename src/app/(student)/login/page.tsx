@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
-import { DEPARTMENTS, SECTIONS } from '@/lib/constants';
+import { DEPARTMENTS, SECTIONS, COLLEGE_YEARS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -23,6 +23,7 @@ function StudentLoginForm() {
     student_name: '',
     department: '',
     section: '',
+    college_year: '',
     room_code: '',
   });
 
@@ -37,7 +38,7 @@ function StudentLoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.register_no || !formData.student_name || !formData.department || !formData.section || !formData.room_code) {
+    if (!formData.register_no || !formData.student_name || !formData.department || !formData.section || !formData.college_year || !formData.room_code) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -187,23 +188,44 @@ function StudentLoginForm() {
             />
           </div>
 
-          {/* Department & Section Row */}
+          {/* Department */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-sm font-medium">
+              <Building2 className="h-3.5 w-3.5 text-emerald-400" /> Department
+            </Label>
+            <Select
+              value={formData.department}
+              onValueChange={(val) => val && setFormData(prev => ({ ...prev, department: val }))}
+              required
+            >
+              <SelectTrigger className="h-11 rounded-xl border-white/10 bg-white/5">
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent>
+                {DEPARTMENTS.map(dept => (
+                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Year & Section Row */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-sm font-medium">
-                <Building2 className="h-3.5 w-3.5 text-emerald-400" /> Department
+                <BookOpen className="h-3.5 w-3.5 text-amber-400" /> Year
               </Label>
               <Select
-                value={formData.department}
-                onValueChange={(val) => val && setFormData(prev => ({ ...prev, department: val }))}
+                value={formData.college_year}
+                onValueChange={(val) => val && setFormData(prev => ({ ...prev, college_year: val }))}
                 required
               >
                 <SelectTrigger className="h-11 rounded-xl border-white/10 bg-white/5">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
                 <SelectContent>
-                  {DEPARTMENTS.map(dept => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                  {COLLEGE_YEARS.map(year => (
+                    <SelectItem key={year} value={year}>{year}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

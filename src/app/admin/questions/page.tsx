@@ -71,6 +71,7 @@ export default function QuestionsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
 
@@ -215,6 +216,26 @@ export default function QuestionsPage() {
     }
   };
 
+  // Delete all questions
+  const deleteAllQuestions = async () => {
+    try {
+      const { error } = await supabase
+        .from('questions')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Hack to delete all
+
+      if (error) throw error;
+
+      toast.success('All questions deleted successfully');
+      setIsDeleteAllDialogOpen(false);
+      fetchQuestions();
+    } catch (error: any) {
+      console.error('Error deleting all questions:', error);
+      setError(error.message);
+      toast.error('Failed to delete all questions');
+    }
+  };
+
   // Reset form
   const resetForm = () => {
     setFormData({
@@ -251,7 +272,7 @@ export default function QuestionsPage() {
   };
 
   // Question form content (shared between create and edit)
-  const QuestionFormContent = () => (
+  const renderQuestionFormContent = () => (
     <div className="space-y-4 py-2">
       <div className="space-y-2">
         <Label>Question</Label>
@@ -356,7 +377,7 @@ export default function QuestionsPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <div>
+          <div className="flex items-center gap-2">
             <input
               type="file"
               id="import-file"
@@ -429,6 +450,13 @@ export default function QuestionsPage() {
               onClick={() => setIsAiDialogOpen(true)}
             >
               ✨ Generate AI
+            </Button>
+            <Button
+              variant="outline"
+              className="rounded-xl border-red-500/30 text-red-400 hover:bg-red-500/10"
+              onClick={() => setIsDeleteAllDialogOpen(true)}
+            >
+              Delete All
             </Button>
           </div>
           <Button
@@ -550,7 +578,7 @@ export default function QuestionsPage() {
             <DialogTitle>Create Question</DialogTitle>
             <DialogDescription>Add a new question to the question bank.</DialogDescription>
           </DialogHeader>
-          <QuestionFormContent />
+          {renderQuestionFormContent()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="rounded-xl">
               Cancel
@@ -569,7 +597,7 @@ export default function QuestionsPage() {
             <DialogTitle>Edit Question</DialogTitle>
             <DialogDescription>Update the question details.</DialogDescription>
           </DialogHeader>
-          <QuestionFormContent />
+          {renderQuestionFormContent()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl">
               Cancel
@@ -596,6 +624,26 @@ export default function QuestionsPage() {
             </Button>
             <Button onClick={deleteQuestion} className="rounded-xl bg-red-600 text-white hover:bg-red-700">
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete All Confirmation Dialog */}
+      <Dialog open={isDeleteAllDialogOpen} onOpenChange={setIsDeleteAllDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete All Questions</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete all questions? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteAllDialogOpen(false)} className="rounded-xl">
+              Cancel
+            </Button>
+            <Button onClick={deleteAllQuestions} className="rounded-xl bg-red-600 text-white hover:bg-red-700">
+              Delete All
             </Button>
           </DialogFooter>
         </DialogContent>

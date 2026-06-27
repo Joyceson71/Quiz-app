@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS public.participants (
   student_name TEXT NOT NULL,
   department TEXT NOT NULL,
   section TEXT NOT NULL,
+  college_year TEXT NOT NULL,
   participant_code TEXT UNIQUE NOT NULL,
   score INTEGER NOT NULL DEFAULT 0,
   total_marks INTEGER NOT NULL DEFAULT 20,

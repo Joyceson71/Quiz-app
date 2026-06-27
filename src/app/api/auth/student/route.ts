@@ -15,10 +15,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { register_no, student_name, department, section, room_code } = body;
+    const { register_no, student_name, department, section, college_year, room_code } = body;
 
     // Validate required fields
-    if (!register_no || !student_name || !department || !section || !room_code) {
+    if (!register_no || !student_name || !department || !section || !college_year || !room_code) {
       return NextResponse.json(
         { error: 'All fields are required' },
         { status: 400 }
@@ -224,6 +224,7 @@ export async function POST(request: NextRequest) {
               student_name: sanitizedName,
               department,
               section,
+              college_year,
               participant_code: participantCode,
               total_marks: 20,
             })
@@ -239,7 +240,7 @@ export async function POST(request: NextRequest) {
             participant_id: participant.id,
             room_id: room.id,
             event_type: 'login',
-            event_data: { register_no: sanitizedRegNo, department, section },
+            event_data: { register_no: sanitizedRegNo, department, section, college_year },
           });
           
           if (logError) console.error('[Activity Log Error]:', JSON.stringify(logError, null, 2));
@@ -288,6 +289,7 @@ export async function POST(request: NextRequest) {
         student_name: sanitizedName,
         department,
         section,
+        college_year,
         participant_code: participantCode,
         total_marks: 20,
         status: room.status === 'active' ? 'in_quiz' : 'joined',
@@ -308,7 +310,7 @@ export async function POST(request: NextRequest) {
       participant_id: participant.id,
       room_id: room.id,
       event_type: 'login',
-      event_data: { register_no: sanitizedRegNo, department, section },
+      event_data: { register_no: sanitizedRegNo, department, section, college_year },
     });
     
     if (logError) console.error('[Activity Log Error]:', JSON.stringify(logError, null, 2));
