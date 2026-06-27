@@ -183,9 +183,37 @@ function QuizContent({ roomId }: { roomId: string }) {
     },
   });
 
+  // Helper for sound effects (frontend only)
+  const playPopSound = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.1);
+      
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+    } catch (e) {
+      // ignore audio errors
+    }
+  };
+
   // Save answer
   const saveAnswer = useCallback(async (questionId: string, answer: string) => {
     if (!participant) return;
+
+    // Play tactile sound
+    playPopSound();
 
     setAnswers(prev => ({ ...prev, [questionId]: answer }));
 
@@ -229,6 +257,34 @@ function QuizContent({ roomId }: { roomId: string }) {
   }, [supabase, roomId, submitQuiz]);
 
   const currentQuestion = questions[currentIndex];
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (showConfirmSubmit || isSubmitting || !currentQuestion) return;
+      
+      const key = e.key.toUpperCase();
+      
+      // Select options
+      if (['A', 'B', 'C', 'D'].includes(key)) {
+        saveAnswer(currentQuestion.id, key);
+      }
+      // Navigation
+      else if (e.key === 'ArrowLeft') {
+        setCurrentIndex(prev => Math.max(0, prev - 1));
+      } else if (e.key === 'ArrowRight') {
+        setCurrentIndex(prev => Math.min(questions.length - 1, prev + 1));
+      }
+      // Flag
+      else if (key === 'F') {
+        toggleReviewLater(currentQuestion.id);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentQuestion, saveAnswer, showConfirmSubmit, isSubmitting, toggleReviewLater, questions.length]);
+
   const answeredCount = Object.keys(answers).length;
   const progressPercent = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;
 
@@ -407,23 +463,31 @@ function QuizContent({ roomId }: { roomId: string }) {
                   </div>
 
                   {/* Navigation */}
-                  <div className="mt-8 flex items-center justify-between border-t border-white/5 pt-6">
-                    <Button
-                      variant="outline"
-                      onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
-                      disabled={currentIndex === 0}
-                      className="rounded-xl border-white/10 h-12 px-6"
-                    >
-                      <ChevronLeft className="mr-2 h-4 w-4" /> Previous
-                    </Button>
+                  <div className="mt-8 flex flex-col gap-4 border-t border-white/5 pt-6">
+                    <div className="flex items-center justify-between">
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
+                        disabled={currentIndex === 0}
+                        className="rounded-xl border-white/10 h-12 px-6"
+                      >
+                        <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+                      </Button>
 
-                    <Button
-                      onClick={() => setCurrentIndex(prev => Math.min(questions.length - 1, prev + 1))}
-                      disabled={currentIndex === questions.length - 1}
-                      className="rounded-xl bg-white/10 hover:bg-white/20 text-foreground h-12 px-6"
-                    >
-                      Next <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
+                      <Button
+                        onClick={() => setCurrentIndex(prev => Math.min(questions.length - 1, prev + 1))}
+                        disabled={currentIndex === questions.length - 1}
+                        className="rounded-xl bg-white/10 hover:bg-white/20 text-foreground h-12 px-6"
+                      >
+                        Next <ChevronRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="hidden md:flex items-center justify-center gap-6 text-xs text-muted-foreground/60 font-mono mt-2">
+                      <span className="flex items-center gap-1.5"><kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">A-D</kbd> select</span>
+                      <span className="flex items-center gap-1.5"><kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">←→</kbd> navigate</span>
+                      <span className="flex items-center gap-1.5"><kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">F</kbd> flag</span>
+                    </div>
                   </div>
                 </motion.div>
               )}

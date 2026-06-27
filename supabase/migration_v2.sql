@@ -16,7 +16,7 @@ ADD COLUMN IF NOT EXISTS ip_address TEXT;
 -- 3. Add categorization to questions for AI generation and better organization
 ALTER TABLE public.questions
 ADD COLUMN IF NOT EXISTS category TEXT,
-ADD COLUMN IF NOT EXISTS subject TEXT,
+ADD COLUMN IF NOT EXISTS subject TEXT,  
 ADD COLUMN IF NOT EXISTS semester TEXT;
 
 -- 4. Create indexes to handle 300+ concurrent students efficiently
