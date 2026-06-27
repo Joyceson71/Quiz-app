@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, use } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, ArrowLeft, Users, RefreshCw, Clock } from 'lucide-react';
+import { Trophy, ArrowLeft, Users, RefreshCw, Clock, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import type { LeaderboardEntry } from '@/lib/supabase/types';
@@ -19,13 +19,22 @@ export default function LeaderboardPage({ params }: { params: Promise<{ roomId: 
   const [roomStartTime, setRoomStartTime] = useState<string | null>(null);
   const [currentParticipantId, setCurrentParticipantId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [prevRanks, setPrevRanks] = useState<Record<string, number>>({});
+  const [recentUpdate, setRecentUpdate] = useState<string | null>(null);
 
   const fetchLeaderboard = useCallback(async () => {
     const { data } = await supabase.rpc('get_leaderboard', {
       target_room_id: roomId,
     });
     if (data) {
-      setEntries(data as LeaderboardEntry[]);
+      setEntries(prev => {
+        if (prev.length > 0) {
+          const ranks: Record<string, number> = {};
+          prev.forEach(e => { ranks[e.participant_id] = e.rank; });
+          setPrevRanks(ranks);
+        }
+        return data as LeaderboardEntry[];
+      });
     }
 
     const { data: room } = await supabase
@@ -57,7 +66,12 @@ export default function LeaderboardPage({ params }: { params: Promise<{ roomId: 
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'participants', filter: `room_id=eq.${roomId}` },
-        () => {
+        (payload) => {
+          const updatedRow = payload.new as { id?: string };
+          if (updatedRow && updatedRow.id) {
+            setRecentUpdate(updatedRow.id);
+            setTimeout(() => setRecentUpdate(null), 3000);
+          }
           fetchLeaderboard();
         }
       )
@@ -112,22 +126,49 @@ export default function LeaderboardPage({ params }: { params: Promise<{ roomId: 
           /* Leaderboard List */
           <div className="space-y-2">
             <AnimatePresence>
-              {entries.map((entry, index) => {
+              {entries.map((entry) => {
                 const isCurrentUser = entry.participant_id === currentParticipantId;
                 const isTop3 = entry.rank <= 3;
+                const prevRank = prevRanks[entry.participant_id];
+                const rankDiff = prevRank ? prevRank - entry.rank : 0;
+                const isRecentlyUpdated = recentUpdate === entry.participant_id;
+
+                let rowClasses = `glass flex items-center gap-4 rounded-xl p-4 transition-colors relative overflow-hidden`;
+                if (isRecentlyUpdated) {
+                  rowClasses += ` ring-2 ring-emerald-500 bg-emerald-500/20 z-10`;
+                } else if (isCurrentUser) {
+                  rowClasses += ` ring-1 ring-blue-500/50 bg-blue-500/10`;
+                } else if (isTop3) {
+                  rowClasses += ` border-amber-500/20`;
+                }
 
                 return (
                   <motion.div
                     key={entry.participant_id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ delay: index * 0.03 }}
                     layout
-                    className={`glass flex items-center gap-4 rounded-xl p-4 transition-all ${
-                      isCurrentUser ? 'ring-2 ring-blue-500/50 bg-blue-500/5' : ''
-                    } ${isTop3 ? 'border-amber-500/20' : ''}`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ 
+                      opacity: 1, 
+                      x: 0,
+                      scale: isRecentlyUpdated ? 1.02 : 1
+                    }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{
+                      layout: { type: "spring", bounce: 0.5, duration: 1 },
+                      scale: { duration: 0.3 }
+                    }}
+                    style={{ zIndex: isRecentlyUpdated ? 10 : 1 }}
+                    className={rowClasses}
                   >
+                    {/* Animated shine effect for updates */}
+                    {isRecentlyUpdated && (
+                      <motion.div
+                        initial={{ x: '-100%' }}
+                        animate={{ x: '200%' }}
+                        transition={{ duration: 1, ease: "easeInOut" }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent -skew-x-12"
+                      />
+                    )}
                     {/* Rank */}
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${getRankBadgeClass(entry.rank)}`}>
                       {isTop3 ? getRankEmoji(entry.rank) : entry.rank}
@@ -136,12 +177,28 @@ export default function LeaderboardPage({ params }: { params: Promise<{ roomId: 
                     {/* Info */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="truncate font-semibold">
+                        <p className={`truncate font-bold ${isRecentlyUpdated ? 'text-emerald-50' : ''}`}>
                           {entry.student_name}
                           {isCurrentUser && (
                             <span className="ml-2 text-xs text-blue-400">(You)</span>
                           )}
                         </p>
+                        {rankDiff > 0 && (
+                          <motion.span 
+                            initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} 
+                            className="flex items-center text-xs font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-full"
+                          >
+                            <ArrowUp className="h-3 w-3 mr-0.5" /> {rankDiff}
+                          </motion.span>
+                        )}
+                        {rankDiff < 0 && (
+                          <motion.span 
+                            initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} 
+                            className="flex items-center text-xs font-bold text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded-full"
+                          >
+                            <ArrowDown className="h-3 w-3 mr-0.5" /> {Math.abs(rankDiff)}
+                          </motion.span>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {entry.department} • {entry.register_no}

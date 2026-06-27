@@ -1,21 +1,33 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useRef, use } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { useEffect, useState, useRef, use } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
 import {
-  Trophy, Award, Target, Clock, BarChart3, Download,
-  GraduationCap, CheckCircle2, XCircle, ArrowRight,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { createClient } from '@/lib/supabase/client';
-import type { Participant } from '@/lib/supabase/types';
-import { getRankEmoji, formatDate } from '@/lib/utils';
-import Link from 'next/link';
+  Trophy,
+  Award,
+  Target,
+  Clock,
+  BarChart3,
+  Download,
+  GraduationCap,
+  CheckCircle2,
+  XCircle,
+  ArrowRight,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/client";
+import type { Participant } from "@/lib/supabase/types";
+import { getRankEmoji, formatDate } from "@/lib/utils";
+import Link from "next/link";
 
-export default function ResultPage({ params }: { params: Promise<{ roomId: string }> }) {
+export default function ResultPage({
+  params,
+}: {
+  params: Promise<{ roomId: string }>;
+}) {
   const { roomId } = use(params);
   const router = useRouter();
   const supabaseRef = useRef(createClient());
@@ -23,36 +35,39 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
   const certRef = useRef<HTMLDivElement>(null);
 
   const [participant, setParticipant] = useState<Participant | null>(null);
-  const [room, setRoom] = useState<{ room_name: string; room_code: string } | null>(null);
+  const [room, setRoom] = useState<{
+    room_name: string;
+    room_code: string;
+  } | null>(null);
   const [isGeneratingCert, setIsGeneratingCert] = useState(false);
   const [reviewData, setReviewData] = useState<any[]>([]);
   const [showReview, setShowReview] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem('participant');
+    const stored = localStorage.getItem("participant");
     if (!stored) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
     const p = JSON.parse(stored) as Participant;
 
     // Fetch fresh participant data with score
     supabase
-      .from('participants')
-      .select('*')
-      .eq('id', p.id)
+      .from("participants")
+      .select("*")
+      .eq("id", p.id)
       .single()
       .then(({ data }) => {
         if (data) {
           setParticipant(data);
-          localStorage.setItem('participant', JSON.stringify(data));
+          localStorage.setItem("participant", JSON.stringify(data));
         }
       });
 
     supabase
-      .from('rooms')
-      .select('room_name, room_code')
-      .eq('id', roomId)
+      .from("rooms")
+      .select("room_name, room_code")
+      .eq("id", roomId)
       .single()
       .then(({ data }) => {
         if (data) setRoom(data);
@@ -60,8 +75,8 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
 
     // Fetch review data
     fetch(`/api/quiz/review?room_id=${roomId}&participant_id=${p.id}`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.review) setReviewData(data.review);
       });
   }, [supabase, roomId, router]);
@@ -72,59 +87,140 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
 
     try {
       // Dynamically import jsPDF to avoid Next.js / Turbopack SSR issues
-      const { default: jsPDF } = await import('jspdf');
-      const pdf = new jsPDF('landscape', 'mm', 'a4');
-      
+      const { default: jsPDF } = await import("jspdf");
+      const pdf = new jsPDF("landscape", "mm", "a4");
+
       const width = pdf.internal.pageSize.getWidth();
       const height = pdf.internal.pageSize.getHeight();
-      
-      // Background
+
+      // Professional Dark Background
       pdf.setFillColor(15, 23, 42); // Slate 900
-      pdf.rect(0, 0, width, height, 'F');
-      
-      // Border
-      pdf.setDrawColor(56, 189, 248); // Sky 400
-      pdf.setLineWidth(2);
-      pdf.rect(10, 10, width - 20, height - 20);
-      
+      pdf.rect(0, 0, width, height, "F");
+
+      // Outer Gold Border
+      pdf.setDrawColor(212, 175, 55); // Gold
+      pdf.setLineWidth(3);
+      pdf.rect(12, 12, width - 24, height - 24);
+
+      // Inner Gold Border
+      pdf.setLineWidth(0.5);
+      pdf.rect(16, 16, width - 32, height - 32);
+
+      // Corner Accents (Triangles)
+      pdf.setFillColor(212, 175, 55);
+      pdf.triangle(12, 12, 32, 12, 12, 32, "F");
+      pdf.triangle(width - 12, 12, width - 32, 12, width - 12, 32, "F");
+      pdf.triangle(12, height - 12, 32, height - 12, 12, height - 32, "F");
+      pdf.triangle(
+        width - 12,
+        height - 12,
+        width - 32,
+        height - 12,
+        width - 12,
+        height - 32,
+        "F",
+      );
+
       // Title
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(24);
-      pdf.text('CERTIFICATE OF ACHIEVEMENT', width / 2, 50, { align: 'center' });
-      
-      // Subtitle
-      pdf.setTextColor(148, 163, 184); // Slate 400
-      pdf.setFontSize(16);
-      pdf.text('Technical Quiz Competition', width / 2, 65, { align: 'center' });
-      
-      // Presented to
-      pdf.setFontSize(14);
-      pdf.text('This certificate is proudly presented to', width / 2, 90, { align: 'center' });
-      
-      // Student Name
-      pdf.setTextColor(250, 204, 21); // Yellow 400
+      pdf.setFont("times", "bold");
+      pdf.setTextColor(212, 175, 55); // Gold
       pdf.setFontSize(36);
-      pdf.text(participant.student_name, width / 2, 115, { align: 'center' });
-      
-      // Details
-      pdf.setTextColor(255, 255, 255);
+      pdf.text("CERTIFICATE OF EXCELLENCE", width / 2, 50, { align: "center" });
+
+      // Subtitle
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(200, 200, 200);
       pdf.setFontSize(12);
-      pdf.text(`${participant.register_no} • ${participant.department} • Section ${participant.section}`, width / 2, 130, { align: 'center' });
-      
-      // Score
-      pdf.setFontSize(16);
-      pdf.text(`For achieving Rank #${participant.rank} with a score of ${participant.score}/${participant.total_marks} (${participant.percentage}%)`, width / 2, 150, { align: 'center' });
-      
-      // Footer
-      pdf.setTextColor(100, 116, 139); // Slate 500
+      pdf.text("THIS PROUDLY CERTIFIES THAT", width / 2, 70, {
+        align: "center",
+      });
+
+      // Student Name
+      pdf.setFont("times", "italic");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(42);
+      pdf.text(participant.student_name, width / 2, 95, { align: "center" });
+
+      // Separator Line
+      pdf.setDrawColor(212, 175, 55);
+      pdf.setLineWidth(1);
+      pdf.line(width / 2 - 60, 105, width / 2 + 60, 105);
+
+      // Description
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(200, 200, 200);
+      pdf.setFontSize(14);
+      const text1 = `has successfully completed the ${room?.room_name || "Technical Quiz"} with outstanding performance,`;
+      const text2 = `securing Rank #${participant.rank} with a score of ${participant.score}/${participant.total_marks} (${participant.percentage}%).`;
+      pdf.text(text1, width / 2, 122, { align: "center" });
+      pdf.text(text2, width / 2, 132, { align: "center" });
+
+      // Academic Details
+      pdf.setTextColor(150, 150, 150);
       pdf.setFontSize(10);
-      pdf.text(`${room?.room_name || 'Quiz'} • ${new Date().toLocaleDateString()}`, width / 2, 180, { align: 'center' });
-      
-      pdf.save(`certificate_${participant.student_name.replace(/\s+/g, '_')}.pdf`);
-      toast.success('Certificate downloaded!');
+      pdf.text(
+        `Reg No: ${participant.register_no}  •  Dept: ${participant.department}  •  Year: ${participant.college_year || "N/A"}`,
+        width / 2,
+        145,
+        { align: "center" },
+      );
+
+      // Signatures
+      // Left Signature (Date)
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.5);
+      pdf.line(40, 170, 100, 170);
+      pdf.setTextColor(200, 200, 200);
+      pdf.setFontSize(12);
+      const issueDate = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      pdf.text(issueDate, 70, 165, { align: "center" });
+      pdf.setFontSize(10);
+      pdf.text("DATE OF ISSUE", 70, 178, { align: "center" });
+
+      // Right Signature (Director/Admin)
+      pdf.line(width - 100, 170, width - 40, 170);
+      pdf.setFont("times", "italic");
+      pdf.setFontSize(16);
+      pdf.text("Platform Admin", width - 70, 165, { align: "center" });
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      pdf.text("AUTHORIZED SIGNATURE", width - 70, 178, { align: "center" });
+
+      // Badge/Seal
+      pdf.setFillColor(212, 175, 55);
+      pdf.circle(width / 2, 175, 15, "F");
+      pdf.setDrawColor(15, 23, 42);
+      pdf.setLineWidth(0.5);
+      pdf.circle(width / 2, 175, 12, "S");
+      pdf.setFont("times", "bold");
+      pdf.setTextColor(15, 23, 42);
+      pdf.setFontSize(14);
+      pdf.text(new Date().getFullYear().toString(), width / 2, 177, {
+        align: "center",
+      });
+
+      // Cert ID
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFontSize(8);
+      const certId = participant.id.split("-")[0].toUpperCase();
+      pdf.text(`CERTIFICATE ID: ${certId}`, width / 2, 195, {
+        align: "center",
+      });
+
+      pdf.save(
+        `certificate_${participant.student_name.replace(/\s+/g, "_")}.pdf`,
+      );
+      toast.success("Certificate downloaded!");
     } catch (e) {
-      console.error('Certificate generation failed:', e);
-      toast.error(`Certificate Error: ${e instanceof Error ? e.message : String(e)}`);
+      console.error("Certificate generation failed:", e);
+      toast.error(
+        `Certificate Error: ${e instanceof Error ? e.message : String(e)}`,
+      );
     } finally {
       setIsGeneratingCert(false);
     }
@@ -139,11 +235,12 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
   }
 
   const isTopThree = participant.rank !== null && participant.rank <= 3;
-  const scoreColor = participant.percentage >= 80
-    ? 'text-emerald-400'
-    : participant.percentage >= 50
-      ? 'text-amber-400'
-      : 'text-red-400';
+  const scoreColor =
+    participant.percentage >= 80
+      ? "text-emerald-400"
+      : participant.percentage >= 50
+        ? "text-amber-400"
+        : "text-red-400";
 
   return (
     <div className="relative min-h-screen bg-background p-4 pb-20">
@@ -159,10 +256,16 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ type: 'spring', delay: 0.3 }}
+            transition={{ type: "spring", delay: 0.3 }}
             className="mx-auto mb-4 text-6xl"
           >
-            {participant.rank === 1 ? '🏆' : participant.rank === 2 ? '🥈' : participant.rank === 3 ? '🥉' : '🎯'}
+            {participant.rank === 1
+              ? "🏆"
+              : participant.rank === 2
+                ? "🥈"
+                : participant.rank === 3
+                  ? "🥉"
+                  : "🎯"}
           </motion.div>
           <h1 className="text-3xl font-bold">Quiz Completed!</h1>
           <p className="mt-1 text-muted-foreground">{room?.room_name}</p>
@@ -178,16 +281,38 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
           {/* Score Circle */}
           <div className="mb-8 flex justify-center">
             <div className="relative flex h-40 w-40 items-center justify-center">
-              <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
+              <svg
+                className="absolute inset-0 -rotate-90"
+                viewBox="0 0 100 100"
+              >
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.05)"
+                  strokeWidth="6"
+                />
                 <motion.circle
-                  cx="50" cy="50" r="45" fill="none"
-                  stroke={participant.percentage >= 80 ? '#10b981' : participant.percentage >= 50 ? '#f59e0b' : '#ef4444'}
-                  strokeWidth="6" strokeLinecap="round"
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke={
+                    participant.percentage >= 80
+                      ? "#10b981"
+                      : participant.percentage >= 50
+                        ? "#f59e0b"
+                        : "#ef4444"
+                  }
+                  strokeWidth="6"
+                  strokeLinecap="round"
                   strokeDasharray={`${participant.percentage * 2.83} 283`}
-                  initial={{ strokeDasharray: '0 283' }}
-                  animate={{ strokeDasharray: `${participant.percentage * 2.83} 283` }}
-                  transition={{ duration: 1.5, delay: 0.5, ease: 'easeOut' }}
+                  initial={{ strokeDasharray: "0 283" }}
+                  animate={{
+                    strokeDasharray: `${participant.percentage * 2.83} 283`,
+                  }}
+                  transition={{ duration: 1.5, delay: 0.5, ease: "easeOut" }}
                 />
               </svg>
               <div className="text-center">
@@ -199,7 +324,9 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
                 >
                   {participant.score}
                 </motion.span>
-                <span className="text-sm text-muted-foreground">/ {participant.total_marks}</span>
+                <span className="text-sm text-muted-foreground">
+                  / {participant.total_marks}
+                </span>
               </div>
             </div>
           </div>
@@ -208,22 +335,30 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="rounded-xl bg-white/5 p-4 text-center">
               <Trophy className="mx-auto mb-2 h-5 w-5 text-amber-400" />
-              <p className="text-2xl font-bold">{participant.rank ? getRankEmoji(participant.rank) : 'N/A'}</p>
+              <p className="text-2xl font-bold">
+                {participant.rank ? getRankEmoji(participant.rank) : "N/A"}
+              </p>
               <p className="text-xs text-muted-foreground">Rank</p>
             </div>
             <div className="rounded-xl bg-white/5 p-4 text-center">
               <Target className="mx-auto mb-2 h-5 w-5 text-blue-400" />
-              <p className={`text-2xl font-bold ${scoreColor}`}>{participant.percentage}%</p>
+              <p className={`text-2xl font-bold ${scoreColor}`}>
+                {participant.percentage}%
+              </p>
               <p className="text-xs text-muted-foreground">Percentage</p>
             </div>
             <div className="rounded-xl bg-white/5 p-4 text-center">
               <CheckCircle2 className="mx-auto mb-2 h-5 w-5 text-emerald-400" />
-              <p className="text-2xl font-bold text-emerald-400">{participant.score}</p>
+              <p className="text-2xl font-bold text-emerald-400">
+                {participant.score}
+              </p>
               <p className="text-xs text-muted-foreground">Correct</p>
             </div>
             <div className="rounded-xl bg-white/5 p-4 text-center">
               <XCircle className="mx-auto mb-2 h-5 w-5 text-red-400" />
-              <p className="text-2xl font-bold text-red-400">{participant.total_marks - participant.score}</p>
+              <p className="text-2xl font-bold text-red-400">
+                {participant.total_marks - participant.score}
+              </p>
               <p className="text-xs text-muted-foreground">Wrong</p>
             </div>
           </div>
@@ -231,14 +366,28 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
           {/* Student Info */}
           <div className="mt-6 rounded-xl bg-white/5 p-4">
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div><span className="text-muted-foreground">Name:</span> <span className="font-medium">{participant.student_name}</span></div>
-              <div><span className="text-muted-foreground">Register:</span> <span className="font-medium">{participant.register_no}</span></div>
-              <div><span className="text-muted-foreground">Department:</span> <span className="font-medium">{participant.department}</span></div>
-              <div><span className="text-muted-foreground">Section:</span> <span className="font-medium">{participant.section}</span></div>
+              <div>
+                <span className="text-muted-foreground">Name:</span>{" "}
+                <span className="font-medium">{participant.student_name}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Register:</span>{" "}
+                <span className="font-medium">{participant.register_no}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Department:</span>{" "}
+                <span className="font-medium">{participant.department}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Section:</span>{" "}
+                <span className="font-medium">{participant.section}</span>
+              </div>
               {participant.submission_time && (
                 <div className="col-span-2">
-                  <span className="text-muted-foreground">Submitted:</span>{' '}
-                  <span className="font-medium">{formatDate(participant.submission_time)}</span>
+                  <span className="text-muted-foreground">Submitted:</span>{" "}
+                  <span className="font-medium">
+                    {formatDate(participant.submission_time)}
+                  </span>
                 </div>
               )}
             </div>
@@ -260,7 +409,7 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
                 className="rounded-xl border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
               >
                 <Download className="mr-2 h-4 w-4" />
-                {isGeneratingCert ? 'Generating...' : 'Certificate'}
+                {isGeneratingCert ? "Generating..." : "Certificate"}
               </Button>
             )}
             {reviewData.length > 0 && (
@@ -269,7 +418,7 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
                 variant="outline"
                 className="rounded-xl border-white/10 flex-1"
               >
-                {showReview ? 'Hide Review' : 'Detailed Review'}
+                {showReview ? "Hide Review" : "Detailed Review"}
               </Button>
             )}
           </div>
@@ -286,7 +435,9 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
             {reviewData.map((q: any, i: number) => (
               <div key={q.id} className="glass rounded-xl p-6">
                 <div className="flex items-start justify-between mb-4">
-                  <span className="text-sm font-medium text-muted-foreground">Question {i + 1}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Question {i + 1}
+                  </span>
                   {q.is_correct ? (
                     <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
                       <CheckCircle2 className="mr-1 h-3 w-3" /> Correct
@@ -299,30 +450,39 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
                 </div>
                 <p className="font-medium mb-4">{q.question}</p>
                 <div className="space-y-2">
-                  {['A', 'B', 'C', 'D'].map((opt) => {
+                  {["A", "B", "C", "D"].map((opt) => {
                     const isSelected = q.selected_answer === opt;
                     const isCorrect = q.correct_answer === opt;
-                    let bgClass = 'bg-white/5 border-white/5';
-                    let textClass = 'text-muted-foreground';
-                    
+                    let bgClass = "bg-white/5 border-white/5";
+                    let textClass = "text-muted-foreground";
+
                     if (isCorrect) {
-                      bgClass = 'bg-emerald-500/20 border-emerald-500/30';
-                      textClass = 'text-emerald-400 font-medium';
+                      bgClass = "bg-emerald-500/20 border-emerald-500/30";
+                      textClass = "text-emerald-400 font-medium";
                     } else if (isSelected && !isCorrect) {
-                      bgClass = 'bg-red-500/20 border-red-500/30';
-                      textClass = 'text-red-400';
+                      bgClass = "bg-red-500/20 border-red-500/30";
+                      textClass = "text-red-400";
                     }
 
                     return (
-                      <div key={opt} className={`p-3 rounded-lg border ${bgClass} flex items-center gap-3`}>
-                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs font-bold ${isCorrect ? 'bg-emerald-500 text-white' : isSelected ? 'bg-red-500 text-white' : 'bg-white/10'}`}>
+                      <div
+                        key={opt}
+                        className={`p-3 rounded-lg border ${bgClass} flex items-center gap-3`}
+                      >
+                        <div
+                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs font-bold ${isCorrect ? "bg-emerald-500 text-white" : isSelected ? "bg-red-500 text-white" : "bg-white/10"}`}
+                        >
                           {opt}
                         </div>
                         <span className={`text-sm ${textClass}`}>
                           {q[`option_${opt.toLowerCase()}`]}
                         </span>
-                        {isSelected && !isCorrect && <XCircle className="ml-auto h-4 w-4 text-red-400" />}
-                        {isCorrect && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-400" />}
+                        {isSelected && !isCorrect && (
+                          <XCircle className="ml-auto h-4 w-4 text-red-400" />
+                        )}
+                        {isCorrect && (
+                          <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-400" />
+                        )}
                       </div>
                     );
                   })}
@@ -339,51 +499,116 @@ export default function ResultPage({ params }: { params: Promise<{ roomId: strin
           <div
             ref={certRef}
             style={{
-              width: '1122px',
-              height: '794px',
-              background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%)',
-              padding: '40px',
-              fontFamily: 'Inter, sans-serif',
-              color: 'white',
-              position: 'relative',
-              overflow: 'hidden',
+              width: "1122px",
+              height: "794px",
+              background:
+                "linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%)",
+              padding: "40px",
+              fontFamily: "Inter, sans-serif",
+              color: "white",
+              position: "relative",
+              overflow: "hidden",
             }}
           >
             {/* Decorative elements */}
-            <div style={{
-              position: 'absolute', top: 0, left: 0, right: 0, height: '4px',
-              background: 'linear-gradient(90deg, #2563eb, #7c3aed, #06b6d4, #10b981)',
-            }} />
-            <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0, height: '4px',
-              background: 'linear-gradient(90deg, #10b981, #06b6d4, #7c3aed, #2563eb)',
-            }} />
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: "4px",
+                background:
+                  "linear-gradient(90deg, #2563eb, #7c3aed, #06b6d4, #10b981)",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: "4px",
+                background:
+                  "linear-gradient(90deg, #10b981, #06b6d4, #7c3aed, #2563eb)",
+              }}
+            />
 
-            <div style={{ textAlign: 'center', paddingTop: '40px' }}>
-              <div style={{ fontSize: '14px', color: '#94a3b8', letterSpacing: '4px', textTransform: 'uppercase' }}>
+            <div style={{ textAlign: "center", paddingTop: "40px" }}>
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "#94a3b8",
+                  letterSpacing: "4px",
+                  textTransform: "uppercase",
+                }}
+              >
                 Certificate of Achievement
               </div>
-              <div style={{ fontSize: '42px', fontWeight: 'bold', marginTop: '20px', background: 'linear-gradient(to right, #60a5fa, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <div
+                style={{
+                  fontSize: "42px",
+                  fontWeight: "bold",
+                  marginTop: "20px",
+                  background: "linear-gradient(to right, #60a5fa, #a78bfa)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
                 Technical Quiz Competition
               </div>
-              <div style={{ fontSize: '16px', color: '#94a3b8', marginTop: '8px' }}>
+              <div
+                style={{ fontSize: "16px", color: "#94a3b8", marginTop: "8px" }}
+              >
                 This certificate is proudly presented to
               </div>
-              <div style={{ fontSize: '36px', fontWeight: 'bold', marginTop: '30px', color: '#fbbf24' }}>
+              <div
+                style={{
+                  fontSize: "36px",
+                  fontWeight: "bold",
+                  marginTop: "30px",
+                  color: "#fbbf24",
+                }}
+              >
                 {participant.student_name}
               </div>
-              <div style={{ fontSize: '14px', color: '#94a3b8', marginTop: '8px' }}>
-                {participant.register_no} • {participant.department} • Section {participant.section}
+              <div
+                style={{ fontSize: "14px", color: "#94a3b8", marginTop: "8px" }}
+              >
+                {participant.register_no} • {participant.department} • Section{" "}
+                {participant.section}
               </div>
-              <div style={{ marginTop: '30px', fontSize: '20px' }}>
-                for achieving <span style={{ color: '#10b981', fontWeight: 'bold' }}>Rank #{participant.rank}</span> with a score of{' '}
-                <span style={{ color: '#60a5fa', fontWeight: 'bold' }}>{participant.score}/{participant.total_marks}</span> ({participant.percentage}%)
+              <div style={{ marginTop: "30px", fontSize: "20px" }}>
+                for achieving{" "}
+                <span style={{ color: "#10b981", fontWeight: "bold" }}>
+                  Rank #{participant.rank}
+                </span>{" "}
+                with a score of{" "}
+                <span style={{ color: "#60a5fa", fontWeight: "bold" }}>
+                  {participant.score}/{participant.total_marks}
+                </span>{" "}
+                ({participant.percentage}%)
               </div>
-              <div style={{ fontSize: '60px', marginTop: '20px' }}>
-                {participant.rank === 1 ? '🏆' : participant.rank === 2 ? '🥈' : '🥉'}
+              <div style={{ fontSize: "60px", marginTop: "20px" }}>
+                {participant.rank === 1
+                  ? "🏆"
+                  : participant.rank === 2
+                    ? "🥈"
+                    : "🥉"}
               </div>
-              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '40px' }}>
-                {room?.room_name} • {new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: "#64748b",
+                  marginTop: "40px",
+                }}
+              >
+                {room?.room_name} •{" "}
+                {new Date().toLocaleDateString("en-IN", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
               </div>
             </div>
           </div>
