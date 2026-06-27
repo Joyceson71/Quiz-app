@@ -23,6 +23,9 @@ import {
   Pause,
   TimerReset,
   UserX,
+  Activity,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,6 +95,7 @@ export default function AdminRoomDetailPage({
   const [deptScores, setDeptScores] = useState<DepartmentScore[]>([]);
   const [questionAcc, setQuestionAcc] = useState<QuestionAccuracy[]>([]);
   const [violations, setViolations] = useState<Violation[]>([]);
+  const [liveAnswers, setLiveAnswers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -150,6 +154,22 @@ export default function AdminRoomDetailPage({
       .limit(50);
     if (violData) setViolations(violData);
 
+    // Live Answers
+    const { data: answersData } = await supabase
+      .from("answers")
+      .select(`
+        id,
+        is_correct,
+        answered_at,
+        participant_id,
+        question_id,
+        participants (student_name)
+      `)
+      .eq("room_id", roomId)
+      .order("answered_at", { ascending: false })
+      .limit(50);
+    if (answersData) setLiveAnswers(answersData);
+
     setIsLoading(false);
   }, [supabase, roomId]);
 
@@ -177,6 +197,16 @@ export default function AdminRoomDetailPage({
           event: "*",
           schema: "public",
           table: "violations",
+          filter: `room_id=eq.${roomId}`,
+        },
+        () => fetchData(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "answers",
           filter: `room_id=eq.${roomId}`,
         },
         () => fetchData(),
@@ -490,6 +520,7 @@ export default function AdminRoomDetailPage({
           <TabsTrigger value="participants">Participants</TabsTrigger>
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
           <TabsTrigger value="charts">Analytics</TabsTrigger>
+          <TabsTrigger value="livefeed">Live Feed</TabsTrigger>
           <TabsTrigger value="violations">Violations</TabsTrigger>
         </TabsList>
 
@@ -829,6 +860,60 @@ export default function AdminRoomDetailPage({
                   <p className="py-12 text-center text-muted-foreground">
                     No violations recorded
                   </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Live Feed Tab */}
+        <TabsContent value="livefeed">
+          <Card className="border-white/5 bg-card/50">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="h-4 w-4 text-emerald-400" /> Live Answers
+              </CardTitle>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                Live Monitoring
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="space-y-2">
+                {liveAnswers.map((answer) => (
+                  <motion.div
+                    key={answer.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center gap-3 rounded-xl bg-white/5 p-3"
+                  >
+                    {answer.is_correct ? (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                    ) : (
+                      <XCircle className="h-4 w-4 shrink-0 text-red-400" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {answer.participants?.student_name || "Unknown"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {answer.is_correct ? "Answered correctly" : "Answered incorrectly"}
+                      </p>
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {new Date(answer.answered_at).toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit"
+                      })}
+                    </span>
+                  </motion.div>
+                ))}
+                {liveAnswers.length === 0 && (
+                  <div className="py-12 text-center text-muted-foreground flex flex-col items-center">
+                    <Activity className="h-8 w-8 opacity-20 mb-3" />
+                    <p>No answers submitted yet. Waiting for live events...</p>
+                  </div>
                 )}
               </div>
             </CardContent>
