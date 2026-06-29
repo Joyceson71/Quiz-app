@@ -2,11 +2,10 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { MAX_TAB_SWITCHES, MAX_FULLSCREEN_EXITS } from '@/lib/constants';
+import { MAX_TAB_SWITCHES } from '@/lib/constants';
 
 interface AntiCheatState {
   tabSwitchCount: number;
-  fullscreenExitCount: number;
   isFullscreen: boolean;
   showWarning: boolean;
   warningMessage: string;
@@ -46,7 +45,6 @@ export function AntiCheatProvider({
   const supabase = createClient();
   const [state, setState] = useState<AntiCheatState>({
     tabSwitchCount: 0,
-    fullscreenExitCount: 0,
     isFullscreen: false,
     showWarning: false,
     warningMessage: '',
@@ -55,7 +53,6 @@ export function AntiCheatProvider({
   });
 
   const tabSwitchRef = useRef(0);
-  const fullscreenExitRef = useRef(0);
 
   const logViolation = useCallback(async (type: string, description: string) => {
     try {
@@ -65,12 +62,14 @@ export function AntiCheatProvider({
         violation_type: type,
         description,
       });
-      await supabase.from('activity_logs').insert({
-        participant_id: participantId,
-        room_id: roomId,
-        event_type: type === 'tab_switch' ? 'tab_switch' : 'fullscreen_exit',
-        event_data: { description },
-      });
+      if (type === 'tab_switch') {
+        await supabase.from('activity_logs').insert({
+          participant_id: participantId,
+          room_id: roomId,
+          event_type: 'tab_switch',
+          event_data: { description },
+        });
+      }
     } catch (err) {
       console.error('Failed to log violation:', err);
     }
@@ -206,33 +205,7 @@ export function AntiCheatProvider({
     // --- Fullscreen Detection ---
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
-        fullscreenExitRef.current += 1;
-        const count = fullscreenExitRef.current;
-        logViolation('fullscreen_exit', `Fullscreen exit #${count}`);
-
-        if (count >= MAX_FULLSCREEN_EXITS) {
-          setState(prev => ({
-            ...prev,
-            fullscreenExitCount: count,
-            isFullscreen: false,
-            shouldAutoSubmit: true,
-            autoSubmitReason: 'auto_submit_fullscreen',
-            showWarning: true,
-            warningMessage: `You have exited fullscreen ${MAX_FULLSCREEN_EXITS} times. Your quiz will be auto-submitted.`,
-          }));
-        } else {
-          setState(prev => ({
-            ...prev,
-            fullscreenExitCount: count,
-            isFullscreen: false,
-            showWarning: true,
-            warningMessage: `Warning: Fullscreen exit detected (${count}/${MAX_FULLSCREEN_EXITS}). After ${MAX_FULLSCREEN_EXITS} exits, your quiz will be auto-submitted! Click "Continue" to return to fullscreen.`,
-          }));
-          // Try to re-enter fullscreen after a brief delay
-          setTimeout(() => {
-            document.documentElement.requestFullscreen().catch(() => {});
-          }, 1000);
-        }
+        setState(prev => ({ ...prev, isFullscreen: false }));
       } else {
         setState(prev => ({ ...prev, isFullscreen: true }));
       }
@@ -293,7 +266,6 @@ export function AntiCheatProvider({
               <button
                 onClick={() => {
                   dismissWarning();
-                  requestFullscreen();
                 }}
                 className="w-full rounded-xl bg-gradient-to-r from-red-500 to-orange-500 px-6 py-3 font-semibold text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-red-500/30"
               >
