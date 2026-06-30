@@ -32,6 +32,14 @@ export function useTimer({
   const expiredFiredRef = useRef(false);
   const totalSeconds = durationMinutes * 60;
 
+  // Store callbacks in refs so the interval doesn't restart on every re-render.
+  // This is critical: submitQuiz recreates when isSubmitting changes, which
+  // would otherwise cause the countdown interval to reset mid-quiz.
+  const onTimeUpRef = useRef(onTimeUp);
+  const onWarningRef = useRef(onWarning);
+  useEffect(() => { onTimeUpRef.current = onTimeUp; }, [onTimeUp]);
+  useEffect(() => { onWarningRef.current = onWarning; }, [onWarning]);
+
   const calculateRemaining = useCallback(() => {
     if (!quizStartTime) return totalSeconds;
 
@@ -68,7 +76,8 @@ export function useTimer({
     syncWithServer();
   }, [quizStartTime, totalSeconds, calculateRemaining]);
 
-  // Countdown tick
+  // Countdown tick — stable: only depends on quizStartTime/calculateRemaining,
+  // NOT on onTimeUp/onWarning (those are read via refs inside the interval).
   useEffect(() => {
     if (!quizStartTime) return;
 
@@ -80,7 +89,7 @@ export function useTimer({
       if (remaining <= TIMER_WARNING_SECONDS && !warningFiredRef.current) {
         warningFiredRef.current = true;
         setIsWarning(true);
-        onWarning?.();
+        onWarningRef.current?.();
       }
 
       // Time's up
@@ -88,12 +97,12 @@ export function useTimer({
         expiredFiredRef.current = true;
         setIsExpired(true);
         clearInterval(interval);
-        onTimeUp();
+        onTimeUpRef.current();
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [quizStartTime, calculateRemaining, onTimeUp, onWarning]);
+  }, [quizStartTime, calculateRemaining]);
 
   // Format time
   const minutes = Math.floor(remainingSeconds / 60);

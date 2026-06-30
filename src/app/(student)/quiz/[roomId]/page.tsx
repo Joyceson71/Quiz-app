@@ -605,14 +605,27 @@ function QuizContent({ roomId }: { roomId: string }) {
 
 export default function QuizPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
+  const router = useRouter();
   const [participant, setParticipant] = useState<Participant | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const stored = localStorage.getItem('participant');
     if (stored) {
-      setParticipant(JSON.parse(stored));
+      try {
+        setParticipant(JSON.parse(stored));
+      } catch {
+        router.replace('/login');
+      }
+    } else {
+      // No participant stored — send user back to login
+      router.replace('/login');
     }
-  }, []);
+  }, [router]);
+
+  // Pre-hydration: render nothing to avoid flash
+  if (!mounted) return null;
 
   if (!participant) {
     return (

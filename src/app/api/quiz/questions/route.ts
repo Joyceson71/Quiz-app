@@ -22,7 +22,61 @@ export async function GET(request: NextRequest) {
       .order('display_order', { ascending: true });
 
     if (rqError || !roomQuestions?.length) {
-      return NextResponse.json({ error: 'No questions found for this room' }, { status: 404 });
+      // Check if this room uses custom_questions (host-created room)
+      const { data: customQuestions, error: cqError } = await supabase
+        .from('custom_questions')
+        .select('id, question, option_a, option_b, option_c, option_d, marks, display_order')
+        .eq('room_id', roomId)
+        .order('display_order', { ascending: true });
+
+      if (cqError || !customQuestions?.length) {
+        return NextResponse.json({ error: 'No questions found for this room' }, { status: 404 });
+      }
+
+      // Determine or persist question order for this participant
+      let finalOrder: string[] = customQuestions.map(q => q.id);
+
+      if (participantId) {
+        const { data: participantData } = await supabase
+          .from('participants')
+          .select('question_order')
+          .eq('id', participantId)
+          .single();
+
+        if (participantData?.question_order && Array.isArray(participantData.question_order) && participantData.question_order.length > 0) {
+          finalOrder = participantData.question_order;
+        } else {
+          const shuffled = [...finalOrder].sort(() => Math.random() - 0.5);
+          finalOrder = shuffled;
+          await supabase.from('participants').update({ question_order: shuffled }).eq('id', participantId);
+        }
+      }
+
+      const sortedCustom = [...customQuestions].sort((a, b) => {
+        const ia = finalOrder.indexOf(a.id);
+        const ib = finalOrder.indexOf(b.id);
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
+
+      // Get existing answers
+      let existingAnswers: Record<string, string> = {};
+      if (participantId) {
+        const { data: answers } = await supabase
+          .from('answers')
+          .select('question_id, selected_answer')
+          .eq('participant_id', participantId);
+        if (answers) {
+          existingAnswers = Object.fromEntries(answers.map(a => [a.question_id, a.selected_answer]));
+        }
+      }
+
+      return NextResponse.json({
+        questions: sortedCustom,
+        existing_answers: existingAnswers,
+        total: sortedCustom.length,
+      });
     }
 
     const questionIds = roomQuestions.map(rq => rq.question_id);

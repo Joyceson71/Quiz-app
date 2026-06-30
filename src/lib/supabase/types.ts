@@ -48,6 +48,9 @@ export interface Room {
   pause_time?: string | null;
   announcement: string | null;
   created_at: string;
+  /** Present only on self-serve (host-created) rooms */
+  host_token?: string | null;
+  is_host_room?: boolean;
 }
 
 export interface Participant {
@@ -109,6 +112,21 @@ export interface RoomQuestion {
   id: string;
   room_id: string;
   question_id: string;
+  display_order: number;
+  created_at: string;
+}
+
+/** Questions uploaded by a host when creating a self-serve room */
+export interface CustomQuestion {
+  id: string;
+  room_id: string;
+  question: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_answer: 'A' | 'B' | 'C' | 'D';
+  marks: number;
   display_order: number;
   created_at: string;
 }

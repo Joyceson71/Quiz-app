@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Brain, Shield, Trophy, Clock, Users, Zap, ArrowRight, GraduationCap } from 'lucide-react';
+import { Brain, Shield, Trophy, Clock, Users, Zap, ArrowRight, GraduationCap, Tv } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
 
@@ -148,22 +148,31 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
+              className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row flex-wrap"
             >
               <Link href="/login">
                 <Button
                   size="lg"
-                  className="group relative h-14 min-w-[200px] overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-8 text-lg font-semibold text-white shadow-2xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:scale-[1.02]"
+                  className="group relative h-14 min-w-[180px] overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-8 text-lg font-semibold text-white shadow-2xl shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:scale-[1.02]"
                 >
                   Join Quiz
                   <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+              <Link href="/host">
+                <Button
+                  size="lg"
+                  className="group relative h-14 min-w-[180px] overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-8 text-lg font-semibold text-white shadow-2xl shadow-violet-500/25 transition-all hover:shadow-violet-500/40 hover:scale-[1.02]"
+                >
+                  <Tv className="mr-2 h-5 w-5" />
+                  Host a Quiz
                 </Button>
               </Link>
               <Link href="/admin/login">
                 <Button
                   size="lg"
                   variant="outline"
-                  className="h-14 min-w-[200px] rounded-2xl border-white/10 px-8 text-lg font-semibold backdrop-blur-sm transition-all hover:bg-white/5 hover:scale-[1.02]"
+                  className="h-14 min-w-[180px] rounded-2xl border-white/10 px-8 text-lg font-semibold backdrop-blur-sm transition-all hover:bg-white/5 hover:scale-[1.02]"
                 >
                   Admin Panel
                 </Button>

@@ -92,6 +92,13 @@ export function AntiCheatProvider({
   useEffect(() => {
     if (!enabled) return;
 
+    // Detect touch/mobile devices — many mobile anti-cheat measures
+    // cause false positives (keyboard opening fires blur, long-press fires
+    // contextmenu, etc.), so we apply a reduced rule-set on mobile.
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      ('ontouchstart' in window) ||
+      (navigator.maxTouchPoints > 0);
+
     // --- Copy/Paste/Cut Protection ---
     const handleCopy = (e: ClipboardEvent) => {
       e.preventDefault();
@@ -106,13 +113,11 @@ export function AntiCheatProvider({
       logViolation('cut_attempt', 'Attempted to cut content');
     };
 
-    // --- Right Click Protection ---
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      logViolation('right_click', 'Attempted right-click');
-    };
+    // Right-click (contextmenu) is intentionally NOT blocked.
+    // On mobile, long-press fires contextmenu and would cause false violations.
+    // On desktop the browser's native context menu is harmless for a quiz.
 
-    // --- Keyboard Restrictions ---
+    // --- Keyboard Restrictions (desktop only, no effect on mobile) ---
     const handleKeyDown = (e: KeyboardEvent) => {
       // Block F12
       if (e.key === 'F12') {
@@ -150,7 +155,10 @@ export function AntiCheatProvider({
       }
     };
 
-    // --- Tab Switch Detection ---
+    // --- Tab Switch Detection (via visibilitychange only) ---
+    // We use ONLY visibilitychange — NOT window blur — to count tab switches.
+    // This avoids double-counting (both events fire on desktop tab switch)
+    // and avoids false positives on mobile (blur fires when keyboard opens).
     const handleVisibilityChange = () => {
       if (document.hidden) {
         tabSwitchRef.current += 1;
@@ -177,10 +185,16 @@ export function AntiCheatProvider({
       }
     };
 
+    // Window blur is only monitored on desktop.
+    // On mobile, the soft keyboard, notification shade, app switcher, etc.
+    // all trigger blur events that are NOT actual tab switches.
+    // We also guard with !document.hidden to avoid double-counting with
+    // the visibilitychange handler above.
     const handleWindowBlur = () => {
-      if (document.hidden) return; // Already handled by visibilitychange
-      
-      tabSwitchRef.current += 1; // Reuse the tab switch counter for focus loss
+      if (isMobile) return; // skip entirely on mobile
+      if (document.hidden) return; // already counted via visibilitychange
+
+      tabSwitchRef.current += 1;
       const count = tabSwitchRef.current;
       logViolation('focus_loss', `Window lost focus #${count}`);
 
@@ -204,7 +218,10 @@ export function AntiCheatProvider({
     };
 
     // --- Fullscreen Detection ---
+    // Fullscreen is not applicable on most mobile browsers (they don't
+    // support the Fullscreen API), so we skip fullscreen tracking on mobile.
     const handleFullscreenChange = () => {
+      if (isMobile) return; // mobile browsers don't support fullscreen properly
       if (!document.fullscreenElement) {
         fullscreenExitRef.current += 1;
         const count = fullscreenExitRef.current;
@@ -242,7 +259,7 @@ export function AntiCheatProvider({
     document.addEventListener('copy', handleCopy);
     document.addEventListener('paste', handlePaste);
     document.addEventListener('cut', handleCut);
-    document.addEventListener('contextmenu', handleContextMenu);
+    // contextmenu is intentionally NOT blocked (see comment above)
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -256,7 +273,6 @@ export function AntiCheatProvider({
       document.removeEventListener('copy', handleCopy);
       document.removeEventListener('paste', handlePaste);
       document.removeEventListener('cut', handleCut);
-      document.removeEventListener('contextmenu', handleContextMenu);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);

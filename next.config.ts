@@ -8,8 +8,6 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '2mb',
     },
   },
-  
-  // Headers for security
   async headers() {
     return [
       {
