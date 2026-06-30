@@ -278,7 +278,19 @@ export async function POST(request: NextRequest) {
     // Step 3: Generate unique participant code
     const participantCode = `QZ-${sanitizedCode.slice(0, 2)}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-    // Step 4: Create participant record
+    // Step 4: Determine total_marks (dynamic for host rooms, fixed 20 for admin rooms)
+    let totalMarks = 20;
+    if (room.is_host_room) {
+      const { data: customQs } = await supabase
+        .from('custom_questions')
+        .select('marks')
+        .eq('room_id', room.id);
+      if (customQs && customQs.length > 0) {
+        totalMarks = customQs.reduce((sum, q) => sum + (q.marks || 1), 0);
+      }
+    }
+
+    // Step 5: Create participant record
     console.log(`[Registration] Inserting participant record for auth_user_id: ${authData.user.id}`);
     const { data: participant, error: participantError } = await supabase
       .from('participants')
@@ -291,7 +303,7 @@ export async function POST(request: NextRequest) {
         section,
         college_year,
         participant_code: participantCode,
-        total_marks: 20,
+        total_marks: totalMarks,
         status: room.status === 'active' ? 'in_quiz' : 'joined',
       })
       .select()

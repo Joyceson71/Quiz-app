@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight, ArrowLeft, Plus, Trash2, Upload, CheckCircle2,
   GraduationCap, Clock, Users, Loader2, FileText, Sparkles,
-  ChevronDown, ChevronUp, Home,
+  ChevronDown, ChevronUp, Home, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -212,13 +212,11 @@ function QuestionCard({
 
 function parseCSV(text: string): QuestionDraft[] {
   const lines = text.trim().split('\n').filter(l => l.trim());
-  // Skip header if it looks like one
   const startIdx = lines[0]?.toLowerCase().includes('question') ? 1 : 0;
   const results: QuestionDraft[] = [];
 
   for (let i = startIdx; i < lines.length; i++) {
     const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-    // Expected: question, option_a, option_b, option_c, option_d, correct_answer, [marks]
     if (cols.length < 6) continue;
     const [question, option_a, option_b, option_c, option_d, correct_answer, marksStr] = cols;
     const ca = correct_answer?.toUpperCase() as 'A' | 'B' | 'C' | 'D';
@@ -233,14 +231,46 @@ function parseCSV(text: string): QuestionDraft[] {
   return results;
 }
 
+// ─── JSON Parser ─────────────────────────────────────────────────────────────
+
+function parseJSON(text: string): QuestionDraft[] {
+  try {
+    const raw = JSON.parse(text);
+    const arr = Array.isArray(raw) ? raw : (raw.questions || []);
+    const results: QuestionDraft[] = [];
+    for (const item of arr) {
+      const ca = String(item.correct_answer || item.correctAnswer || item.answer || '').toUpperCase() as 'A' | 'B' | 'C' | 'D';
+      if (!['A', 'B', 'C', 'D'].includes(ca)) continue;
+      const q: QuestionDraft = {
+        id: Math.random().toString(36).slice(2),
+        question: String(item.question || item.text || item.q || '').trim(),
+        option_a: String(item.option_a || item.optionA || item.a || item.options?.[0] || '').trim(),
+        option_b: String(item.option_b || item.optionB || item.b || item.options?.[1] || '').trim(),
+        option_c: String(item.option_c || item.optionC || item.c || item.options?.[2] || '').trim(),
+        option_d: String(item.option_d || item.optionD || item.d || item.options?.[3] || '').trim(),
+        correct_answer: ca,
+        marks: Number(item.marks || item.points || 1),
+      };
+      if (!q.question || !q.option_a || !q.option_b || !q.option_c || !q.option_d) continue;
+      results.push(q);
+    }
+    return results;
+  } catch {
+    return [];
+  }
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function HostPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jsonFileInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showJsonPaste, setShowJsonPaste] = useState(false);
+  const [jsonPasteText, setJsonPasteText] = useState('');
 
   // Step 1 state
   const [roomName, setRoomName] = useState('');
@@ -282,7 +312,6 @@ export default function HostPage() {
         return;
       }
       setQuestions(prev => {
-        // Replace blank questions, keep ones with content
         const hasContent = prev.filter(q => q.question.trim());
         return [...hasContent, ...parsed].slice(0, 50);
       });
@@ -290,6 +319,42 @@ export default function HostPage() {
     };
     reader.readAsText(file);
     e.target.value = '';
+  };
+
+  const handleJSONFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const parsed = parseJSON(text);
+      if (!parsed.length) {
+        toast.error('No valid questions found. Check the JSON format.');
+        return;
+      }
+      setQuestions(prev => {
+        const hasContent = prev.filter(q => q.question.trim());
+        return [...hasContent, ...parsed].slice(0, 50);
+      });
+      toast.success(`Imported ${parsed.length} questions from JSON`);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleJSONPaste = () => {
+    const parsed = parseJSON(jsonPasteText);
+    if (!parsed.length) {
+      toast.error('No valid questions found. Ensure the JSON matches the expected format.');
+      return;
+    }
+    setQuestions(prev => {
+      const hasContent = prev.filter(q => q.question.trim());
+      return [...hasContent, ...parsed].slice(0, 50);
+    });
+    toast.success(`Imported ${parsed.length} questions from JSON`);
+    setShowJsonPaste(false);
+    setJsonPasteText('');
   };
 
   const validateStep1 = () => {
@@ -491,8 +556,11 @@ export default function HostPage() {
                   <h2 className="font-bold">Questions <span className="text-muted-foreground text-sm">({questions.length}/50)</span></h2>
                   <p className="text-xs text-muted-foreground">Click the letter buttons to mark the correct answer.</p>
                 </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  {/* Hidden file inputs */}
                   <input ref={fileInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleCSVUpload} />
+                  <input ref={jsonFileInputRef} type="file" accept=".json" className="hidden" onChange={handleJSONFileUpload} />
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -500,6 +568,22 @@ export default function HostPage() {
                     className="gap-2 rounded-xl border-white/10 text-xs"
                   >
                     <Upload className="h-3.5 w-3.5" /> Import CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => jsonFileInputRef.current?.click()}
+                    className="gap-2 rounded-xl border-white/10 text-xs text-violet-400 border-violet-500/30"
+                  >
+                    <FileText className="h-3.5 w-3.5" /> Import JSON
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowJsonPaste(v => !v)}
+                    className="gap-2 rounded-xl border-white/10 text-xs text-blue-400 border-blue-500/30"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> Paste JSON
                   </Button>
                   <Button
                     size="sm"
@@ -510,6 +594,41 @@ export default function HostPage() {
                   </Button>
                 </div>
               </div>
+
+              {/* JSON Paste Box */}
+              <AnimatePresence>
+                {showJsonPaste && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="glass rounded-2xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-blue-400">Paste JSON</span>
+                        <button onClick={() => setShowJsonPaste(false)} className="text-muted-foreground hover:text-foreground">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <textarea
+                        value={jsonPasteText}
+                        onChange={e => setJsonPasteText(e.target.value)}
+                        placeholder={'[\n  {\n    "question": "What is 2+2?",\n    "option_a": "3",\n    "option_b": "4",\n    "option_c": "5",\n    "option_d": "6",\n    "correct_answer": "B",\n    "marks": 1\n  }\n]'}
+                        rows={10}
+                        className="w-full resize-y rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleJSONPaste}
+                        className="w-full rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30"
+                      >
+                        Import Questions
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* CSV Format hint */}
               <div className="rounded-xl bg-blue-500/5 border border-blue-500/20 p-3 text-xs text-muted-foreground">

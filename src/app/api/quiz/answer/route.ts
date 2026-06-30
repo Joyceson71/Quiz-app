@@ -30,14 +30,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the correct answer for this question
+    // Get the correct answer — check shared questions first, then custom_questions (for host rooms)
     const { data: question } = await supabase
       .from('questions')
       .select('correct_answer')
       .eq('id', question_id)
       .single();
 
-    const isCorrect = question?.correct_answer === selected_answer;
+    let correctAnswer = question?.correct_answer;
+
+    if (!correctAnswer) {
+      // Host room — look up in custom_questions
+      const { data: customQ } = await supabase
+        .from('custom_questions')
+        .select('correct_answer')
+        .eq('id', question_id)
+        .single();
+      correctAnswer = customQ?.correct_answer;
+    }
+
+    const isCorrect = correctAnswer === selected_answer;
 
     // Upsert answer (insert or update if exists)
     const { data: answer, error } = await supabase
